@@ -1,13 +1,13 @@
 /*
 
-  snapper
+  conmon
 
   Created by Varun Singh on 10/3/2012.
 
 
  Note a lot of code is borrowed from here and there.
  
- gcc -Wall -pedantic snapper.c -lpcap -o snapper
+ gcc -Wall -pedantic conmon.c -lpcap -o conmon
  http://www.tcpdump.org/pcap.html
  http://tools.ietf.org/html/rfc793
  http://tools.ietf.org/html/rfc1071
@@ -17,7 +17,7 @@
  The TCP reset packets (TCP RST) are sent when the utility sees ACK packets. 
  */
 
-#define APP_NAME        "snapper"
+#define APP_NAME        "conmon"
 #define APP_DESC        "based on Sniffer example using libpcap"
 #define APP_COPYRIGHT   "extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group"
 #define APP_DISCLAIMER  "THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM.\n"
@@ -205,8 +205,10 @@ void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph)
 
 void ParseTCPPacket(const u_char *packet);
 
-void createRSTpacket(struct in_addr srcip, struct in_addr destip, u_short sport, u_short dport,
-                     u_short ident, unsigned int seq, u_char ttl, unsigned int ack);
+void print_payload(const u_char *payload, int len);
+
+void print_hex_ascii_line(const u_char *payload, int len, int offset);
+
 
 void print_app_banner(void)
 {
@@ -258,8 +260,6 @@ unsigned short in_cksum(unsigned short *addr,int len){
   
 }
 
-
-
 void signal_handler(int signal)
 {
   /* cleanup */
@@ -281,6 +281,97 @@ void print_app_usage(void)
   printf("\n");
   
   return;
+}
+
+/*
+ * print data in rows of 16 bytes: offset   hex   ascii
+ *
+ * 00000   47 45 54 20 2f 20 48 54  54 50 2f 31 2e 31 0d 0a   GET / HTTP/1.1..
+ */
+void print_hex_ascii_line(const u_char *payload, int len, int offset)
+{
+
+    int i;
+    int gap;
+    const u_char *ch;
+
+    /* offset */
+    printf("%05d   ", offset);
+    
+    /* hex */
+    ch = payload;
+    for(i = 0; i < len; i++) {
+        printf("%02x ", *ch);
+        ch++;
+        /* print extra space after 8th byte for visual aid */
+        if (i == 7)
+            printf(" ");
+    }
+    /* print space to handle line less than 8 bytes */
+    if (len < 8)
+        printf(" ");
+    
+    /* fill hex gap with spaces if not full line */
+    if (len < 16) {
+        gap = 16 - len;
+        for (i = 0; i < gap; i++) {
+            printf("   ");
+        }
+    }
+    printf("   ");
+    
+    /* ascii (if printable) */
+    ch = payload;
+    for(i = 0; i < len; i++) {
+        if (isprint(*ch))
+            printf("%c", *ch);
+        else
+            printf(".");
+        ch++;
+    }
+    printf("\n");
+}
+
+/*
+ * print packet payload data (avoid printing binary data)
+ */
+void print_payload(const u_char *payload, int len)
+{
+
+    int len_rem = len;
+    int line_width = 16;            /* number of bytes per line */
+    int line_len;
+    int offset = 0;                 /* zero-based offset counter */
+    const u_char *ch = payload;
+
+    if (len <= 0)
+        return;
+
+    /* data fits on one line */
+    if (len <= line_width) {
+        print_hex_ascii_line(ch, len, offset);
+        return;
+    }
+
+    /* data spans multiple lines */
+    for ( ;; ) {
+        /* compute current line length */
+        line_len = line_width % len_rem;
+        /* print line */
+        print_hex_ascii_line(ch, line_len, offset);
+        /* compute total remaining */
+        len_rem = len_rem - line_len;
+        /* shift pointer to remaining bytes to print */
+        ch = ch + line_len;
+        /* add offset */
+        offset = offset + line_width;
+        /* check if we have line width chars or less */
+        if (len_rem <= line_width) {
+            /* print last line and get out */
+            print_hex_ascii_line(ch, len_rem, offset);
+            break;
+        }
+    }
 }
 
 
@@ -377,141 +468,16 @@ void ParseTCPPacket(const u_char *packet)
       #endif
       
         
-      /*
        if (size_payload > 0) {
-       printf("   Payload (%d bytes)", size_payload);
+           printf("   Payload (%d bytes)", size_payload);
+           print_payload(payload, size_payload);
        }
-       */
       
       /*printf("Sniffed Packet Header\n");*/
       showPacketDetails(ip, tcp); 
       
-      /*
-        Create spurious RST packet
-        Send the ACK number as sequence number to the source
-        Send the incremented SEQ to the target
-        
-        if (tcph->th_flags & TH_ACK)        
-      */
-      createRSTpacket(ip->ip_dst, ip->ip_src, tcp->th_dport, tcp->th_sport, ip->ip_id, tcp->th_ack, ip->ip_ttl, tcp->th_ack);
-      createRSTpacket(ip->ip_src, ip->ip_dst, tcp->th_sport, tcp->th_dport, ip->ip_id, htonl(ntohl(tcp->th_seq)+1), ip->ip_ttl, tcp->th_ack);
     }
 }
-
-/*
- The parameter list is ugly. We could have just sent the complete ip header.
- However, 
- 1. we need to swap the src and dest ip/port
- 2. the sequence no. is different in either direction.
- 3. ACK could be random? or same as header?
- 4. ident could be random? or same as header?
- 5. TTL could be random? or same as header?
- */
-void createRSTpacket(struct  in_addr srcip, struct  in_addr destip, u_short sport, u_short dport, u_short ident, unsigned int seq, u_char  ttl, unsigned int ack) {
-#if 1
-  int sockfd;
-  struct sockaddr_in dstaddr;
-  char datagram[4096];  /* buffer for datagrams */
-  struct sniff_ip *iph = (struct sniff_ip *) datagram;
-  struct sniff_tcp *tcph = (struct sniff_tcp *) (datagram + sizeof (struct sniff_ip));
-  int one = 1;
-  const int *val = &one;
-  struct pseudo_hdr *phdr;
-  char temp_addr[INET_ADDRSTRLEN];
-  
-  
-  if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) < 0) {
-    perror("createRSTpacket() sock failed:");
-    exit(EXIT_FAILURE);
-  }
-  /* Recommended by Stevens: you need the "one" variable for setsockopt
-   call so here it is*/
-  if (setsockopt (sockfd, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0){
-    printf ("Warning: Cannot set HDRINCL from port %d to port %d\n", 
-            ntohs(sport), ntohs(dport));
-    perror("setsockopt: ");
-  }
-  
-  strncpy(temp_addr, inet_ntoa(destip), INET_ADDRSTRLEN); /*BUG: destip or srcip?*/
-  dstaddr.sin_family = AF_INET;
-  dstaddr.sin_port = dport;
-  inet_pton(AF_INET, temp_addr, &dstaddr.sin_addr);
-  
-  memset (datagram, 0, 4096);       /* zero out the buffer */
-  iph->ip_vhl = 0x45;               /* version=4,header_length=5 */
-  iph->ip_tos = 0;                  /* type of service not needed */
-  /* 
-   wierd thing [TODO][BUG]:
-   htons() for linux
-   no htons for mac os x/BSD 
-   */
-  iph->ip_len = (IPTCPHDRSIZE);     /* no payload for RST */
-  iph->ip_id  = ident;              /* ID could this be random?*/
-  iph->ip_off = 0;                  /* no fragmentation */
-  iph->ip_ttl = ttl;                /* Time to Live, default:255 */
-  iph->ip_src = srcip;              /* faking source device IP */
-  iph->ip_dst = destip;             /* target destination address */
-  iph->ip_sum = 0;                  /* Checksum is set to zero until computed */
-  iph->ip_p   = IPPROTO_TCP;        /* IPPROTO_TCP or IPPROTO_UDP */
-  iph->ip_sum = in_cksum((unsigned short *)iph, IPHDRSIZE); 
-  
-  /* From RFC793
-   In all states except SYN-SENT, all reset (RST) segments are validated
-   by checking their SEQ-fields.  A reset is valid if its sequence number
-   is in the window.  In the SYN-SENT state (a RST received in response
-   to an initial SYN), the RST is acceptable if the ACK field
-   acknowledges the SYN.
-   
-   The receiver of a RST first validates it, then changes state.  If the
-   receiver was in the LISTEN state, it ignores it.  If the receiver was
-   in SYN-RECEIVED state and had previously been in the LISTEN state,
-   then the receiver returns to the LISTEN state, otherwise the receiver
-   aborts the connection and goes to the CLOSED state.  If the receiver
-   was in any other state, it aborts the connection and advises the user
-   and goes to the CLOSED state.
-   */
-  
-  tcph->th_sport = sport;              /* faking source port */
-  tcph->th_dport = dport;              /* target destination port */
-  tcph->th_seq   = seq;                /* SYN sequence the should be 
-                                        incremented in one dir and
-                                        echoed in the other */
-  tcph->th_ack   = 0;                  /* No ACK needed? or echo ACK?*/
-  tcph->th_offx2 = 0x50;               /* 50h (5 offset) ( 8 0s reserved )*/
-  tcph->th_flags = TH_RST;             /* initial connection request FLAG*/
-  tcph->th_win   =  0;                 /* Window size default: htons(4500) + rand()%1000  */
-                                       /* maximum allowed window size 65k*/
-  tcph->th_urp   = 0;                  /* no urgent pointer */
-  tcph->th_sum=0;                      /* Checksum is set to zero until computed */
-
-  /* pseudo header for tcp checksum */
-  phdr = (struct pseudo_hdr *) (datagram + IPTCPHDRSIZE);
-  phdr->src = srcip.s_addr;
-  phdr->dst = destip.s_addr;
-  phdr->zero = 0;
-  phdr->protocol = IPPROTO_TCP;
-  phdr->tcplen = htons(TCPHDRSIZE);       
-  /* in bytes the tcp segment length default:0x14*/
-  tcph->th_sum = in_cksum((unsigned short *)(tcph), IPTCPHDRSIZE);
-  
-  /*printf("RST packet IP Header\n");*/
-  showPacketDetails(iph, tcph);
- 
-  if (sendto(sockfd, datagram, IPTCPHDRSIZE, 0, (struct sockaddr *)&dstaddr, sizeof(dstaddr)) < 0) {
-    fprintf(stderr, "Error sending datagram: from port %d to port %d\n", 
-            ntohs(sport), ntohs(dport));
-    perror("sendto: ");
-  }
-  else {
-    #if _DEBUG
-    printf("verify: %s %d\n", inet_ntoa(dstaddr.sin_addr), ntohs(dstaddr.sin_port));
-    #endif
-  }
-  
-  close(sockfd);
-#endif
-}
-
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph)
 {
@@ -573,7 +539,7 @@ int main(int argc, char **argv)
    *  (tcp[13] == 0x10) for only ACK packets
    *  ip for any IP packet
    */
-  char filter_exp[] = "(tcp[13] == 0x10)";
+  char filter_exp[] = "ip";
   pcap_if_t *alldevices, *device;
   pcap_addr_t listaddr;
   int i =0;

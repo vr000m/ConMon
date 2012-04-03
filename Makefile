@@ -5,13 +5,13 @@ CFLAGS=-g -Wall -pedantic
 LDFLAGS=
 LIBS= -lpcap
 
-SOURCES=snapper.c
+SOURCES=conmon.c
 
 HEADERS=$(wildcard *.h)
 
 OBJECTS=$(SOURCES:.c=.o)
 
-TARGET=snapper
+TARGET=conmon
 
 all: $(SOURCES) $(TARGET) $(HEADERS)
 
