@@ -1,3 +1,22 @@
+ConMon is a tool that will measure the traffic to and from an endpoint.
+
+Current classifiers:
+** local (inbound, outbound and background) [done]
+*** external (--same as above--) [done]
+** IPv4 and IPv6?
+** TCP and UDP [done]
+*** port 80 and 443?
+
+TODO:
+* create above classifiers [done]
+* create vectors/map of bit rate for each of the above classifiers.
+* create plots to show changes in bit rate for the above classifiers
+* create an API so that applications can query the bit rate for a specific
+  classifier
+
+There may be bugs related to IPv6 in some places
+
+Forked from my earlier project [[Snapper]]
 
 Compiling:
 The project comes with a basic Makefile. If your system does not have
@@ -9,18 +28,11 @@ iph->ip_len = (IPTCPHDRSIZE);
 to
 iph->ip_len = htons(IPTCPHDRSIZE);
 
-[Note 2]: If you want to capture some other types of packets (e.g., IP,
-ICMP, UDP) then change the filter expression in: 
-char filter_exp[] = "(tcp[13] == 0x10)"; 
-to 
-char filter_exp[] = "ip"; 
-for capturing IP packets instead of TCP ACK packets (comments in code has
-some examples)[WS_FILTERS].
-
-[Note 3]: If you want to parse a packet look at got_packet() there is a
+[Note 2]: If you want to parse a packet look at got_packet() there is a
 switch case that parses the protocol field. You can add your own code or
-function to parse the packet.
+function to parse the associated packet (see ParseUDPPacket()/ParseTCPPacket()).
 
 
 [TCPDUMP] http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz
 [WS_FILTERS] http://wiki.wireshark.org/CaptureFilters
+[Snapper] https://github.com/vr000m/Snapper

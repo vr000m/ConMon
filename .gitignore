@@ -6,3 +6,4 @@ autogen.sh
 aclocal.m4
 Makefile.am
 configure.in
+*.txt

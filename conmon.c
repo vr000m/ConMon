@@ -9,12 +9,13 @@
  
  gcc -Wall -pedantic conmon.c -lpcap -o conmon
  http://www.tcpdump.org/pcap.html
+ 
+ http://tools.ietf.org/html/rfc768
  http://tools.ietf.org/html/rfc793
  http://tools.ietf.org/html/rfc1071
  
  Tested to run on the MAC.
- 
- The TCP reset packets (TCP RST) are sent when the utility sees ACK packets. 
+ http://www.winpcap.org/docs/docs_412/html/group__wpcap__tut2.html
  */
 
 #define APP_NAME        "conmon"
@@ -33,7 +34,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
-#include <unistd.h> 
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/time.h>
 
 #define __USE_BSD         /* Using BSD IP header           */ 
 #include <netinet/ip.h>   /* Internet Protocol             */ 
@@ -50,19 +53,25 @@
 /* Ethernet addresses are 6 bytes */
 #define ETHER_ADDR_LEN  6
 
-/* IPv4, TCP, IP+TCP header sizes */
-#define IPHDRSIZE sizeof(struct sniff_ip)
-#define TCPHDRSIZE sizeof(struct sniff_tcp)
-#define IPTCPHDRSIZE IPHDRSIZE + TCPHDRSIZE
+/* IPv4, TCP, UDP header sizes */
+#define IPHDRSIZE   sizeof(struct sniff_ip)
+#define TCPHDRSIZE  sizeof(struct sniff_tcp)
+#define UDPHDRSIZE  sizeof(struct sniff_udp)    /* 8: length of UDP header */	
 
 /* INET_ADDRSTRLEN is 16 */
 
-#define HOME_IP ""
-/*
- This should be autodetected...
- */
-
 #define CAPTURE_COUNT -1           /* number of packets to capture, -1: non-stop */
+
+/*
+ from: http://www.beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getnameinfoman
+ Finally, there are several flags you can pass, but here a a couple good ones. 
+ NI_NOFQDN will cause the host to only contain the host name, not the whole domain name. 
+ NI_NAMEREQD will cause the function to fail if the name cannot be found with a DNS lookup 
+ (if you don't specify this flag and the name can't be found, getnameinfo() will put a string version of the IP address in host instead.)
+ */
+#ifndef NI_NUMERICHOST
+# define NI_NUMERICHOST 2
+#endif
 
 /* Ethernet header */
 struct sniff_ethernet {
@@ -111,12 +120,19 @@ struct sniff_ip {
 
 /* device */
 struct bpf_program fp;          /* compiled filter program (expression) */
+
+char strHostIP[INET_ADDRSTRLEN];
+
+struct sockaddr *hostSockAddr;
+
 char cnet[INET_ADDRSTRLEN];     /* dot notation of the network address */
 bpf_u_int32 net;                /* network address */
+
 char cmask[INET_ADDRSTRLEN];    /* dot notation of the network mask    */
 bpf_u_int32 mask;               /* subnet mask */
+
 pcap_t *handle;                 /* packet capture handle */
-int pkt_count = 1;              /* packet counter */
+u_int pkt_count = 1;              /* packet counter */
 
 
 
@@ -168,28 +184,27 @@ struct sniff_tcp {
   u_short th_urp;         /* urgent pointer */
 };
 
-/* 
-    Pseudoheader (Used to compute TCP checksum. from RFC793) The checksum
-    also covers a 96 bit pseudo header conceptually prefixed to the TCP
-    header. This pseudo header contains the Source Address, the Destination
-    Address, the Protocol, and TCP length. This gives the TCP protection
-    against misrouted segments. This information is carried in the Internet
-    Protocol and is transferred across the TCP/Network interface in the
-    arguments or results of calls by the TCP on the IP.
-                 +--------+--------+--------+--------+
-                 |           Source Address          |
-                 +--------+--------+--------+--------+
-                 |         Destination Address       |
-                 +--------+--------+--------+--------+
-                 |  zero  |  PTCL  |    TCP Length   |
-                 +--------+--------+--------+--------+
-*/
-struct pseudo_hdr {
-  u_int32_t src;     /* 32bit source ip address*/
-  u_int32_t dst;     /* 32bit destination ip address */  
-  u_char zero;       /* 8 reserved bits (all 0)  */
-  u_char protocol;   /* protocol field of ip header */
-  u_int16_t tcplen;  /* tcp length (both header and data */
+
+/* UDP header: http://tools.ietf.org/html/rfc768
+ 0      7 8     15 16    23 24    31
+ +--------+--------+--------+--------+
+ |     Source      |   Destination   |
+ |      Port       |      Port       |
+ +--------+--------+--------+--------+
+ |                 |                 |
+ |     Length      |    Checksum     |
+ +--------+--------+--------+--------+
+ |
+ |          data octets ...
+ +---------------- ...
+ */
+
+struct sniff_udp {
+  u_short uh_sport;               /* source port */
+  u_short uh_dport;               /* destination port */
+  u_short uh_ulen;                /* udp length */
+  u_short uh_sum;                 /* udp checksum */
+  
 };
 
 
@@ -203,11 +218,19 @@ void readTCPflag(u_char tcp_flags);
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
 
-void ParseTCPPacket(const u_char *packet);
+u_int ParseUDPPacket (const u_char *packet);
 
-void print_payload(const u_char *payload, int len);
+u_int ParseTCPPacket(const u_char *packet);
 
-void print_hex_ascii_line(const u_char *payload, int len, int offset);
+void print_payload(const u_char *payload, u_int len);
+
+void print_hex_ascii_line(const u_char *payload, u_int len, int offset);
+
+char* iptos(struct sockaddr *sockAddress, int af_flag, char *address, int addrlen);
+
+void print_interface(pcap_if_t *d);
+
+void printEmptyFormat(char *str);
 
 
 void print_app_banner(void)
@@ -216,48 +239,8 @@ void print_app_banner(void)
   printf("%s - %s\n", APP_NAME, APP_DESC);
   printf("%s\n", APP_COPYRIGHT);
   printf("%s\n", APP_DISCLAIMER);
-  printf("\n");
   
   return;
-}
-
-/* 
- Copy pasted the code from the interwebs. Outputs of in_cksum() and
- checksum_comp() are equivalent, but note that in checksum_comp() we
- transform the checksum using htons() before returning the value.
- 
- Read: http://tools.ietf.org/html/rfc1071 for the algorithm
- */
-
-unsigned short in_cksum(unsigned short *addr,int len){
-  register int sum = 0;
-  u_short answer = 0;
-  register u_short *w = addr;
-  register int nleft = len;
-  
-  /*
-   * Our algorithm is simple, using a 32-bit accumulator (sum),
-   * we add sequential 16-bit words to it, and at the end, fold back 
-   * all the carry bits from the top 16 bits into the lower 16 bits. 
-   */
-  
-  while (nleft > 1) {
-    sum += *w++;
-    nleft -= 2;
-  }
-  
-  /* mop up an odd byte, if necessary */
-  if (nleft == 1) {
-    *(u_char *)(&answer) = *(u_char *) w;
-    sum += answer;
-  }
-  
-  /* add back carry outs from top 16 bits to low 16 bits */
-  sum = (sum >> 16) + (sum &0xffff); /* add hi 16 to low 16 */
-  sum += (sum >> 16); /* add carry */
-  answer = ~sum; /* truncate to 16 bits */
-  return(answer);
-  
 }
 
 void signal_handler(int signal)
@@ -265,8 +248,6 @@ void signal_handler(int signal)
   /* cleanup */
   pcap_freecode(&fp);
   pcap_close(handle);
-  
-  printf("\nGoodbye!!\n"); 
   exit(0);
 }
 
@@ -284,11 +265,12 @@ void print_app_usage(void)
 }
 
 /*
- * print data in rows of 16 bytes: offset   hex   ascii
+ * print data in rows of 16 bytes: 
+ * offset  hex                                                ascii
  *
  * 00000   47 45 54 20 2f 20 48 54  54 50 2f 31 2e 31 0d 0a   GET / HTTP/1.1..
  */
-void print_hex_ascii_line(const u_char *payload, int len, int offset)
+void print_hex_ascii_line(const u_char *payload, u_int len, int offset)
 {
 
     int i;
@@ -335,7 +317,7 @@ void print_hex_ascii_line(const u_char *payload, int len, int offset)
 /*
  * print packet payload data (avoid printing binary data)
  */
-void print_payload(const u_char *payload, int len)
+void print_payload(const u_char *payload, u_int len)
 {
 
     int len_rem = len;
@@ -374,6 +356,42 @@ void print_payload(const u_char *payload, int len)
     }
 }
 
+void printEmptyFormat(char *str)
+{
+  printf("%s\t--\t->\t--\t", str);
+}
+
+u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
+{
+  /*
+   compare given address with host address and 
+   if they belong to the same subnet then return true
+   else return false
+  */
+   
+  if (((u_long)net&lIpAddr) == (u_long)net)
+    return 1;
+  else 
+    return 0;
+  /*
+   struct sockaddr_in sockIpAddr;
+   inet_pton(AF_INET, ipaddr, &(sockIpAddr.sin_addr));
+   printf("IP.. %s \t", ipaddr);*/
+}
+
+
+void checkInboundOrOutbound(char *sIp, char *dIp)
+{
+  if (strcmp(sIp, strHostIP)==0) {
+    printf("Out\t");
+  }
+  else if (strcmp(dIp, strHostIP)==0) {
+    printf("Inc\t");
+  }
+  else {
+    printf("Xos\t");
+  }
+}
 
 /*
  * dissect/print packet
@@ -383,100 +401,169 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   const struct sniff_ethernet *ethernet;  /* The ethernet header [1] */
   const struct sniff_ip *ip;              /* The IP header */
   int size_ip;
-  char srcHost[INET_ADDRSTRLEN];
-  char dstHost[INET_ADDRSTRLEN];
+  int ip_version;
+  char srcPkt[INET_ADDRSTRLEN];
+  char dstPkt[INET_ADDRSTRLEN];
   
+  int size_payload;
+  unsigned long int sec;
+  
+  sec = time(NULL);
   /* define ethernet header */
   ethernet = (struct sniff_ethernet*)(packet);
   
   /* define/compute ip header offset */
   ip = (struct sniff_ip*)(packet + ETHHDRSIZE);
 
+  ip_version = IP_V(ip);
   size_ip = IP_HL(ip)*4;
   if (size_ip < IPHDRSIZE) {
     printf("   * Invalid IP header length: %u bytes\n", size_ip);
     return;
   }
   
-  strcpy(srcHost, inet_ntoa(ip->ip_src));
-  strcpy(dstHost, inet_ntoa(ip->ip_dst));
-  printf("P%d:\t", pkt_count++);
-  printf("%s\t->\t", srcHost);
-  printf(" %s\t", dstHost);
+  inet_ntop(AF_INET, &(ip->ip_src), srcPkt, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &(ip->ip_dst), dstPkt, INET_ADDRSTRLEN);
+  
+
+  printf("%d:\t%ld\tv%d\t", pkt_count++, sec, ip_version);
+  /*
+   First AND both src and destination ipaddress with netmask
+   if the IP address are equal then the endpoints communicating locally.
+
+   Possible combinations:
+   If both src and destination match then local else external.
+   In each categoy the comunication can be inbound/outbound/cross traffic
+  */
+  if(checkIfIpLocal((ip->ip_src).s_addr, AF_INET)==1 && checkIfIpLocal((ip->ip_dst).s_addr, AF_INET)==1){
+    printf ("Loc\t");
+    checkInboundOrOutbound(srcPkt, dstPkt);
+  }
+  else {
+    printf ("Ext\t");
+    checkInboundOrOutbound(srcPkt, dstPkt);
+  }
+    
+  
+  
+  size_payload = ntohs(ip->ip_len);
+/*  printf("%d\t", size_payload); */
+  
   
   switch(ip->ip_p) {
+      /*
+       IP IANA numbers
+       http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xml
+       */
     case IPPROTO_TCP:
       printf("TCP\t");
-      ParseTCPPacket((u_char *)ip);
+      size_payload =ParseTCPPacket((u_char *)ip);
       break;
     case IPPROTO_UDP:
       printf("UDP\t");
+      size_payload = ParseUDPPacket((u_char *)ip);
       break;
     case IPPROTO_ICMP:
-      printf("ICMP\t");
+      printEmptyFormat("ICMP");
       break;
     case IPPROTO_IP:
-      printf("IP\t");
+      printEmptyFormat("IP");
       break;
+    case IPPROTO_IGMP:
+      printEmptyFormat("IGMP");
+      break;
+    case IPPROTO_PIM:
+      printEmptyFormat("PIM");
+      break;  
     default:
-      printf("Protocol: unknown\t");
+      printf("%d", ip->ip_p);
+      printEmptyFormat("");
       break;
   }
+  printf("%d\t",size_payload);
+  printf("%s\t->\t", srcPkt);
+  printf("%s\t", dstPkt);
+  
   printf("\n");
 }
 
-void ParseTCPPacket(const u_char *packet)
+u_int ParseUDPPacket (const u_char *packet)
 {
-    const struct sniff_ip *ip;              /* The IP header */
-    const struct sniff_tcp *tcp;            /* The TCP header */
-    const u_char *payload;                  /* Packet payload */
-    
-    int size_ip;
-    int size_tcp;
-    int size_payload;
+  const struct sniff_ip *ip;              /* The IP header */
+  const struct sniff_udp *udp;            /* The UDP header */
+  const u_char *payload;                  /* Packet payload */
 
-    unsigned int srcport;
-    unsigned int dstport;
-    
-    ip = (struct sniff_ip*)(packet);
-    
-    /*if((strcmp(srcHost, HOME_IP)==0)|| (strcmp(dstHost, HOME_IP)==0))*/
-    {
-      /* define/compute tcp header offset */
-      tcp = (struct sniff_tcp*)(packet + IPHDRSIZE);
-      size_tcp = TH_OFF(tcp)*4;
-      if (size_tcp < TCPHDRSIZE) {
-        printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-        return;
-      }
-      srcport = ntohs(tcp->th_sport);
-      dstport = ntohs(tcp->th_dport);
-      
-      /* define/compute tcp payload (segment) offset */
-      payload = (u_char *)(packet + IPHDRSIZE + TCPHDRSIZE);
-      
-      /* compute tcp payload (segment) size */
-      size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
-      
-      printf("%d\t->\t", srcport);
-      printf(" %d\t", dstport);
-      #if _DEBUG
-      printf("id: %d\t", htons(ip->ip_id));
-      printf("seq: %u\t", ntohl(tcp->th_seq));  
-      printf("ack: %u\t", ntohl(tcp->th_ack));  
-      printf("sum: %x\n", (ip->ip_sum));
-      #endif
-      
-        
-       if (size_payload > 0) {
-           printf("   Payload (%d bytes)", size_payload);
-           print_payload(payload, size_payload);
-       }
-      
-      /*printf("Sniffed Packet Header\n");*/
-      showPacketDetails(ip, tcp); 
-      
+  u_int size_payload =0;
+  
+  u_int srcport=0;
+  u_int dstport=0;
+  
+  ip = (struct sniff_ip*)(packet);
+  udp = (struct sniff_udp*)(packet + IPHDRSIZE);
+  srcport = ntohs(udp->uh_sport);
+  dstport = ntohs(udp->uh_dport);
+  
+  /* define/compute tcp payload (segment) offset */
+  payload = (u_char *)(packet + IPHDRSIZE + UDPHDRSIZE);
+  
+  /* compute tcp payload (segment) size */
+  size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + UDPHDRSIZE);
+  
+  printf("%d\t->\t", srcport);
+  printf(" %d\t", dstport);
+
+  
+  return size_payload;
+}
+
+u_int ParseTCPPacket(const u_char *packet)
+{
+  const struct sniff_ip *ip;              /* The IP header */
+  const struct sniff_tcp *tcp;            /* The TCP header */
+  const u_char *payload;                  /* Packet payload */
+  
+  u_int size_tcp=0;
+  u_int size_payload=0;
+
+  u_int srcport=0;
+  u_int dstport=0;
+  
+  ip = (struct sniff_ip*)(packet);
+  
+  /*if((strcmp(srcHost, strHostIP)==0)|| (strcmp(dstHost, strHostIP)==0))*/
+  {
+    /* define/compute tcp header offset */
+    tcp = (struct sniff_tcp*)(packet + IPHDRSIZE);
+    size_tcp = TH_OFF(tcp)*4;
+    if (size_tcp < TCPHDRSIZE) {
+      printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
+      return 0;
     }
+    srcport = ntohs(tcp->th_sport);
+    dstport = ntohs(tcp->th_dport);
+    
+    /* define/compute tcp payload (segment) offset */
+    payload = (u_char *)(packet + IPHDRSIZE + TCPHDRSIZE);
+    
+    /* compute tcp payload (segment) size */
+    size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + size_tcp);
+    
+    printf("%d\t->\t", srcport);
+    printf(" %d\t", dstport);
+    
+    #if _DEBUG
+    printf("id: %d\t", htons(ip->ip_id));
+    printf("seq: %u\t", ntohl(tcp->th_seq));  
+    printf("ack: %u\t", ntohl(tcp->th_ack));  
+    printf("sum: %x\n", (ip->ip_sum));
+    if (size_payload > 0) {
+      printf("   Payload (%d bytes)", size_payload);
+      print_payload(payload, size_payload);
+    }      
+    showPacketDetails(ip, tcp); 
+    #endif
+  }
+  return size_payload;
 }
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph)
@@ -485,7 +572,7 @@ void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph)
 #if _DEBUG
   printf(" vhl=%x\n",iph->ip_vhl);       
   printf(" tos=%x\n",iph->ip_tos);       
-  printf(" len=%d IP+TCP hdr len=%ld\n",ntohs(iph->ip_len), IPTCPHDRSIZE);
+  printf(" len=%d IP+TCP hdr len=%ld\n",ntohs(iph->ip_len), IPHDRSIZE + TCPHDRSIZE);
   printf(" ide=%d\n",ntohs(iph->ip_id));
   printf(" off=%d\n",ntohs(iph->ip_off));
   printf(" ttl=%x\n",iph->ip_ttl);
@@ -522,6 +609,53 @@ void readTCPflag(u_char tcp_flags)
   if (tcp_flags & TH_CWR) { printf(" CWR"); }
 }
 
+char* iptos(struct sockaddr *sockAddress, int af_flag, char *address, int addrlen)
+{
+  socklen_t sockaddrlen;
+  
+  sockaddrlen = sizeof(struct sockaddr_storage);  
+  
+  if(getnameinfo(sockAddress, 
+                 sockaddrlen, 
+                 address, 
+                 addrlen, 
+                 NULL, 
+                 0, 
+                 NI_NUMERICHOST) != 0) address = NULL;
+  
+  return address;
+}
+
+void print_interface(pcap_if_t *d)
+{
+  /*
+   from http://www.winpcap.org/docs/docs_412/html/group__wpcap__tut2.html 
+   */
+  pcap_addr_t *a;
+  char ip46str[128];
+  
+  for(a=d->addresses;a;a=a->next) {        
+    switch(a->addr->sa_family)
+    {
+      case AF_INET:
+        if (a->addr)
+          printf("\tIPv4: %s\t", iptos(a->addr, AF_INET, ip46str, sizeof(ip46str)));
+        break;
+        
+      /* we could enable IPv6.
+      case AF_INET6:
+        if (a->addr)
+          printf("\tIPv6: %s\t", iptos(a->addr, AF_INET6, ip46str, sizeof(ip46str)));
+        break;*/
+        
+      default:
+        /*printf("\tAddress Family Name: Unknown\n");*/
+        break;
+    }
+  }
+  printf("\n");  
+}
+
 int main(int argc, char **argv)
 {
   char *dev = NULL;               /* capture device name */
@@ -540,16 +674,21 @@ int main(int argc, char **argv)
    *  ip for any IP packet
    */
   char filter_exp[] = "ip";
-  pcap_if_t *alldevices, *device;
-  pcap_addr_t listaddr;
-  int i =0;
-  int choice;
-  struct in_addr addr1, addr2;
+  pcap_if_t *alldevices, *device, *chosendevice;
+  pcap_addr_t *a;
+  int i =0, j=0;
+  int choice=-1;
   
   /* Ctrl+C */
   signal ( SIGINT, signal_handler);
   
   print_app_banner();
+  
+  if (argc > 3 ) {
+    fprintf(stderr, "error: unrecognized command-line options\n\n");
+    print_app_usage();
+    exit(EXIT_FAILURE);
+  }
   
   /* check for capture device name on command-line */
   if (argc >= 2) {
@@ -560,44 +699,23 @@ int main(int argc, char **argv)
     strcpy(filter_exp,argv[2]);
   }
   
-  if (argc > 3 ) {
-    fprintf(stderr, "error: unrecognized command-line options\n\n");
-    print_app_usage();
-    exit(EXIT_FAILURE);
+  
+  if (pcap_findalldevs(&alldevices, errbuf) == -1) {
+    fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
+    exit(1);
   }
-  else if (argc == 1 ){
-    if (pcap_findalldevs(&alldevices, errbuf) == -1) {
-      fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
-      exit(1);
-    }
-    
+  
+  if (argc == 1 ){
     /* Print the list */
     for(device=alldevices; device; device=device->next) {
+      if(device->flags & PCAP_IF_LOOPBACK)
+        break;
       printf("%d. %s", ++i, device->name);
       if (device->description)
         printf(" (%s)\t", device->description);
       else
         printf(" (No description available)\t");
-      listaddr=device->addresses[0];
-      switch(listaddr.addr->sa_family) {
-        case AF_INET:
-          inet_ntop(AF_INET, &(((struct sockaddr_in *)listaddr.addr)->sin_addr),
-                    cnet, INET_ADDRSTRLEN);
-          break;
-          
-        case AF_INET6:
-          inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)listaddr.addr)->sin6_addr),
-                    cnet, INET6_ADDRSTRLEN);
-          break;
-          
-        default:
-          /*TODO: this is very strange...*/
-          inet_ntop(listaddr.addr->sa_family, &(((struct sockaddr_in *)listaddr.addr)->sin_addr),
-                      cnet, INET_ADDRSTRLEN);
-          if(strlen(cnet)==0)
-              strcpy(cnet, "unknown");
-      }
-      printf("IP ADDR: %s\n", cnet);
+      print_interface(device);
     }
     if(i==0) {
       printf("\nNo interfaces found! Make sure libpcap is installed.\n");
@@ -613,43 +731,59 @@ int main(int argc, char **argv)
       pcap_freealldevs(alldevices);
       return -1;
     }
+  }
     
-    /* Iterate the link list to the chosen device */
-    for(device=alldevices, i=0; i< choice-1 ;device=device->next, i++);
-    dev=device->name;
-    
-    /*
-     strcpy(cnet, inet_ntoa(((struct sockaddr_in*)device->addresses[0].addr)->sin_addr));
-     printf("IP ADDR: %s\t",cnet);
-     */
-    
-    if (dev == NULL) {
-      fprintf(stderr, "Couldn't find default device: %s\n", errbuf);
-      exit(EXIT_FAILURE);
-    }
+  /* Iterate the link list to the chosen device 
+      based on choice or device name*/
+  for(device=alldevices, j=1; device ;device=device->next, j++){
+    if( (dev!=NULL && strcmp(device->name, dev)==0) || choice==j)
+    {
+      chosendevice=device;
+      break;
+    }               
   }
   
-  /* get network number and mask associated with capture device */
+  dev=chosendevice->name;
+  
+  for(a=chosendevice->addresses;a;a=a->next) {        
+    switch(a->addr->sa_family)
+    {
+      case AF_INET:
+        if (a->addr) {
+        /*
+          address->addr
+          address->netmask
+          address->broadaddr
+          address->dstaddr
+        */
+          iptos(a->addr, AF_INET, strHostIP, sizeof(strHostIP));
+          hostSockAddr = a->addr;
+          iptos(a->netmask, AF_INET, cmask, sizeof(strHostIP));
+        }
+        break;
+    }
+  }
+  printf("IP ADDR: %s\tMASK: %s\t",strHostIP, cmask);  
+  if (dev == NULL) {
+    fprintf(stderr, "Couldn't find default device: %s\n", errbuf);
+    exit(EXIT_FAILURE);
+  }
+
+  /* get network number and mask associated with capture device*/
   if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
     fprintf(stderr, "Couldn't get netmask for device %s: %s\n",
             dev, errbuf);
     net = 0;
     mask = 0;
   }
-  else {
-    addr1.s_addr = net;
-    strcpy(cnet, inet_ntoa(addr1));
-    addr2.s_addr = mask;
-    strcpy(cmask, inet_ntoa(addr2));
-    printf("NET: %s %x CMASK: %s %x\n",cnet, htonl(net), cmask, htonl(mask));
-    
-  }
   
   /* print capture info */
-  printf("Device: %s\n", dev);
+  printf("Device: %s\t", dev);
   /*printf("Number of packets: %d\n", CAPTURE_COUNT);*/
-   printf("Filter expression: %s\n", filter_exp);
+  printf("Filter expression: %s\n", filter_exp);
   
+  printf("SNo.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\tSrc. IP Addr\t->\tDest. IP Addr\n");
+
   /* open capture device */
   handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf); 
   if (handle == NULL) {
