@@ -2,7 +2,7 @@ ConMon is a tool that will measure the traffic to and from an endpoint.
 
 Current classifiers:
 ** local (inbound, outbound and background) [done]
-*** external (--same as above--) [done]
+** external (--same as above--) [done]
 ** IPv4 and IPv6?
 ** TCP and UDP [done]
 *** port 80 and 443?
@@ -15,23 +15,18 @@ TODO:
 * create an API so that applications can query the bit rate for a specific
   classifier
 
-There may be bugs related to IPv6 in some places
-
-Forked from my earlier project [[Snapper]]
+There may be bugs related to IPv6 in some places. ConMon is a fork from my
+earlier project [Snapper]
 
 Compiling:
 The project comes with a basic Makefile. If your system does not have
 libpcap installed you can download it from [TCPDUMP]. 
 
-[Note 1]: If you are compiling on linux, it is likely you will have to
-change:
-iph->ip_len = (IPTCPHDRSIZE);
-to
-iph->ip_len = htons(IPTCPHDRSIZE);
 
-[Note 2]: If you want to parse a packet look at got_packet() there is a
+[Note 1]: If you want to parse a packet look at got_packet() there is a
 switch case that parses the protocol field. You can add your own code or
-function to parse the associated packet (see ParseUDPPacket()/ParseTCPPacket()).
+function to parse the associated packet (see
+ParseUDPPacket()/ParseTCPPacket()).
 
 
 [TCPDUMP] http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz
