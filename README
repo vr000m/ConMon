@@ -9,6 +9,7 @@ Current classifiers:
 
 TODO:
 * create above classifiers [done]
+* hash the source/destination IP addresses.
 * create vectors/map of bit rate for each of the above classifiers.
 * create plots to show changes in bit rate for the above classifiers
 * create an API so that applications can query the bit rate for a specific

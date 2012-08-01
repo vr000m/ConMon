@@ -447,7 +447,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   
   
   size_payload = ntohs(ip->ip_len);
-/*  printf("%d\t", size_payload); */
+  printf("%d\t", size_payload);
   
   
   switch(ip->ip_p) {
@@ -480,7 +480,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       printEmptyFormat("");
       break;
   }
-  printf("%d\t",size_payload);
+  /*printf("%d\t",size_payload);*/
   printf("%s\t->\t", srcPkt);
   printf("%s\t", dstPkt);
   
@@ -782,7 +782,8 @@ int main(int argc, char **argv)
   /*printf("Number of packets: %d\n", CAPTURE_COUNT);*/
   printf("Filter expression: %s\n", filter_exp);
   
-  printf("SNo.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\tSrc. IP Addr\t->\tDest. IP Addr\n");
+/*  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\tSrc. IP Addr\t->\tDest. IP Addr\n");*/
+  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tSize\tProto\tSPort\t->\tDPort\tSrc. IP Addr\t->\tDest. IP Addr\n");
 
   /* open capture device */
   handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf); 
