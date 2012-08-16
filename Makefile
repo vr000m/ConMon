@@ -1,9 +1,9 @@
-CC=gcc
+CC=g++
 
 CFLAGS=-g -Wall -pedantic
     #-ansi -pedantic -Wall -W -Wconversion -Wshadow -Wcast-qual -Wwrite-strings
-LDFLAGS=
-LIBS= -lpcap
+LDFLAGS= 
+LIBS= -lpcap -levent -lpthread
 
 SOURCES=conmon.c
 

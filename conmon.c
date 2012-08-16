@@ -18,220 +18,7 @@
  http://www.winpcap.org/docs/docs_412/html/group__wpcap__tut2.html
  */
 
-#define APP_NAME        "conmon"
-#define APP_DESC        "based on Sniffer example using libpcap"
-#define APP_COPYRIGHT   "extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group"
-#define APP_DISCLAIMER  "THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM.\n"
-
-#include <pcap.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <signal.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/time.h>
-
-#define __USE_BSD         /* Using BSD IP header           */ 
-#include <netinet/ip.h>   /* Internet Protocol             */ 
-#define __FAVOR_BSD       /* Using BSD TCP header          */ 
-#include <netinet/tcp.h>  /* Transmission Control Protocol */
-
-
-/* default snap length (maximum bytes per packet to capture) */
-#define SNAP_LEN 1518
-
-/* ethernet headers are always exactly 14 bytes [1] */
-#define ETHHDRSIZE 14
-
-/* Ethernet addresses are 6 bytes */
-#define ETHER_ADDR_LEN  6
-
-/* IPv4, TCP, UDP header sizes */
-#define IPHDRSIZE   sizeof(struct sniff_ip)
-#define TCPHDRSIZE  sizeof(struct sniff_tcp)
-#define UDPHDRSIZE  sizeof(struct sniff_udp)    /* 8: length of UDP header */	
-
-/* INET_ADDRSTRLEN is 16 */
-
-#define CAPTURE_COUNT -1           /* number of packets to capture, -1: non-stop */
-
-/*
- from: http://www.beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getnameinfoman
- Finally, there are several flags you can pass, but here a a couple good ones. 
- NI_NOFQDN will cause the host to only contain the host name, not the whole domain name. 
- NI_NAMEREQD will cause the function to fail if the name cannot be found with a DNS lookup 
- (if you don't specify this flag and the name can't be found, getnameinfo() will put a string version of the IP address in host instead.)
- */
-#ifndef NI_NUMERICHOST
-# define NI_NUMERICHOST 2
-#endif
-
-/* Ethernet header */
-struct sniff_ethernet {
-  u_char  ether_dhost[ETHER_ADDR_LEN];    /* destination host address */
-  u_char  ether_shost[ETHER_ADDR_LEN];    /* source host address */
-  u_short ether_type;                     /* IP? ARP? RARP? etc */
-};
-
-/* 
-    IP header: http://tools.ietf.org/html/rfc791#section-3.1
-
-     0                   1                   2                   3
-     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |Version|  IHL  |Type of Service|          Total Length         |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |         Identification        |Flags|      Fragment Offset    |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |  Time to Live |    Protocol   |         Header Checksum       |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                       Source Address                          |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                    Destination Address                        |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                    Options                    |    Padding    |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-*/
-
-struct sniff_ip {
-  u_char  ip_vhl;               /* version << 4 | header length >> 2 */
-  u_char  ip_tos;               /* type of service */
-  u_short ip_len;               /* total length */
-  u_short ip_id;                /* identification */
-  u_short ip_off;               /* fragment offset field */
-#define IP_RF 0x8000            /* reserved fragment flag */
-#define IP_DF 0x4000            /* dont fragment flag */
-#define IP_MF 0x2000            /* more fragments flag */
-#define IP_OFFMASK 0x1fff       /* mask for fragmenting bits */
-  u_char  ip_ttl;               /* time to live */
-  u_char  ip_p;                 /* protocol */
-  u_short ip_sum;               /* checksum */
-  struct  in_addr ip_src,ip_dst;/* source and dest address */
-};
-#define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
-#define IP_V(ip)                (((ip)->ip_vhl) >> 4)
-
-/* device */
-struct bpf_program fp;          /* compiled filter program (expression) */
-
-char strHostIP[INET_ADDRSTRLEN];
-
-struct sockaddr *hostSockAddr;
-
-char cnet[INET_ADDRSTRLEN];     /* dot notation of the network address */
-bpf_u_int32 net;                /* network address */
-
-char cmask[INET_ADDRSTRLEN];    /* dot notation of the network mask    */
-bpf_u_int32 mask;               /* subnet mask */
-
-pcap_t *handle;                 /* packet capture handle */
-u_int pkt_count = 1;              /* packet counter */
-
-
-
-/* 
-    TCP header: http://tools.ietf.org/html/rfc793#section-3.1
-    
-     0                   1                   2                   3
-     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |          Source Port          |       Destination Port        |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                        Sequence Number                        |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                    Acknowledgment Number                      |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |  Data |           |U|A|P|R|S|F|                               |
-    | Offset| Reserved  |R|C|S|S|Y|I|            Window             |
-    |       |           |G|K|H|T|N|N|                               |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |           Checksum            |         Urgent Pointer        |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                    Options                    |    Padding    |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                             data                              |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-*/
-typedef u_int tcp_seq;
-
-struct sniff_tcp {
-  u_short th_sport;       /* source port */
-  u_short th_dport;       /* destination port */
-  tcp_seq th_seq;         /* sequence number */
-  tcp_seq th_ack;         /* acknowledgement number */
-  u_char  th_offx2;       /* data offset, rsvd */
-#define TH_OFF(th)      (((th)->th_offx2 & 0xf0) >> 4)
-  u_char  th_flags;
-#define TH_FIN  0x01    /* 1  */
-#define TH_SYN  0x02    /* 2  */
-#define TH_RST  0x04    /* 4  */
-#define TH_PUSH 0x08    /* 8  */
-#define TH_ACK  0x10    /* 16 */
-#define TH_URG  0x20    /* 32 */
-#define TH_ECE  0x40    /* 64 */
-#define TH_CWR  0x80    /* 128*/
-#define TH_FLAGS        (TH_FIN|TH_SYN|TH_RST|TH_ACK|TH_URG|TH_ECE|TH_CWR)
-  u_short th_win;         /* window */
-  u_short th_sum;         /* checksum */
-  u_short th_urp;         /* urgent pointer */
-};
-
-
-/* UDP header: http://tools.ietf.org/html/rfc768
- 0      7 8     15 16    23 24    31
- +--------+--------+--------+--------+
- |     Source      |   Destination   |
- |      Port       |      Port       |
- +--------+--------+--------+--------+
- |                 |                 |
- |     Length      |    Checksum     |
- +--------+--------+--------+--------+
- |
- |          data octets ...
- +---------------- ...
- */
-
-struct sniff_udp {
-  u_short uh_sport;               /* source port */
-  u_short uh_dport;               /* destination port */
-  u_short uh_ulen;                /* udp length */
-  u_short uh_sum;                 /* udp checksum */
-  
-};
-
-
-void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
-
-void print_app_banner(void);
-
-void print_app_usage(void);
-
-void readTCPflag(u_char tcp_flags);
-
-void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
-
-u_int ParseUDPPacket (const u_char *packet);
-
-u_int ParseTCPPacket(const u_char *packet);
-
-void print_payload(const u_char *payload, u_int len);
-
-void print_hex_ascii_line(const u_char *payload, u_int len, int offset);
-
-char* iptos(struct sockaddr *sockAddress, int af_flag, char *address, int addrlen);
-
-void print_interface(pcap_if_t *d);
-
-void printEmptyFormat(char *str);
-
+#include "conmon.h"
 
 void print_app_banner(void)
 {
@@ -273,8 +60,8 @@ void print_app_usage(void)
 void print_hex_ascii_line(const u_char *payload, u_int len, int offset)
 {
 
-    int i;
-    int gap;
+    u_int i;
+    u_int gap;
     const u_char *ch;
 
     /* offset */
@@ -320,10 +107,10 @@ void print_hex_ascii_line(const u_char *payload, u_int len, int offset)
 void print_payload(const u_char *payload, u_int len)
 {
 
-    int len_rem = len;
-    int line_width = 16;            /* number of bytes per line */
-    int line_len;
-    int offset = 0;                 /* zero-based offset counter */
+    u_int len_rem = len;
+    u_int line_width = 16;            /* number of bytes per line */
+    u_int line_len;
+    u_int offset = 0;                 /* zero-based offset counter */
     const u_char *ch = payload;
 
     if (len <= 0)
@@ -356,9 +143,20 @@ void print_payload(const u_char *payload, u_int len)
     }
 }
 
-void printEmptyFormat(char *str)
+void print_empty_string(char *str)
 {
   printf("%s\t--\t->\t--\t", str);
+}
+
+double gettime()
+{
+  int errno;
+  struct timeval t_now;
+  
+  
+	errno = gettimeofday(&t_now, NULL);
+  
+	return (t_now.tv_sec+t_now.tv_usec/1000000.0);
 }
 
 u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
@@ -380,18 +178,54 @@ u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
 }
 
 
-void checkInboundOrOutbound(char *sIp, char *dIp)
+xio_flag checkInboundOrOutbound(char *sIp, char *dIp)
 {
+  xio_flag x;
   if (strcmp(sIp, strHostIP)==0) {
     printf("Out\t");
+    x= XIO_OUTGOING;
   }
   else if (strcmp(dIp, strHostIP)==0) {
     printf("Inc\t");
+    x= XIO_INCOMING;
   }
   else {
     printf("Xos\t");
+    x= XIO_CROSS;
   }
+  return x;
 }
+
+/*
+ * Store stats routinely
+ */
+void timeout_callback(evutil_socket_t fd, short event, void *arg)
+{
+	struct timeval newtime, difference;
+#if !EV_PERSIST_FLAG
+ struct event *timeout = arg; 
+ struct timeval tv;
+#endif
+  double elapsed;
+  
+	evutil_gettimeofday(&newtime, NULL);
+	evutil_timersub(&newtime, &lasttime, &difference);
+	elapsed = difference.tv_sec + (difference.tv_usec / 1.0e6);
+  
+//	printf("timeout_callback called at %d: %.3f seconds elapsed.\n", \
+//         (int)newtime.tv_sec, elapsed);
+	lasttime = newtime;
+  
+//  printf ("reset %f %f\n", newtime.tv_sec+(newtime.tv_usec/1.0e6), \
+//          lasttime.tv_sec+(lasttime.tv_usec/1.0e6));
+  
+#if !EV_PERSIST_FLAG
+  evutil_timerclear(&tv);
+  tv.tv_sec = TIMEOUT;
+  event_add(timeout, &tv);
+#endif
+}
+
 
 /*
  * dissect/print packet
@@ -400,17 +234,18 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 {
   const struct sniff_ethernet *ethernet;  /* The ethernet header [1] */
   const struct sniff_ip *ip;              /* The IP header */
-  int size_ip;
+  u_int size_ip;
   int ip_version;
   char srcPkt[INET_ADDRSTRLEN];
   char dstPkt[INET_ADDRSTRLEN];
   
   int size_payload;
-  unsigned long int sec;
+  u_int sec;
   
-  sec = time(NULL);
   /* define ethernet header */
   ethernet = (struct sniff_ethernet*)(packet);
+  
+  sec = (u_int)gettime();
   
   /* define/compute ip header offset */
   ip = (struct sniff_ip*)(packet + ETHHDRSIZE);
@@ -426,7 +261,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   inet_ntop(AF_INET, &(ip->ip_dst), dstPkt, INET_ADDRSTRLEN);
   
 
-  printf("%d:\t%ld\tv%d\t", pkt_count++, sec, ip_version);
+  printf("%d:\t%d\tv%d\t", pkt_count++, sec, ip_version);
   /*
    First AND both src and destination ipaddress with netmask
    if the IP address are equal then the endpoints communicating locally.
@@ -437,18 +272,16 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   */
   if(checkIfIpLocal((ip->ip_src).s_addr, AF_INET)==1 && checkIfIpLocal((ip->ip_dst).s_addr, AF_INET)==1){
     printf ("Loc\t");
-    checkInboundOrOutbound(srcPkt, dstPkt);
   }
   else {
     printf ("Ext\t");
-    checkInboundOrOutbound(srcPkt, dstPkt);
   }
-    
   
+  checkInboundOrOutbound(srcPkt, dstPkt);
   
   size_payload = ntohs(ip->ip_len);
   printf("%d\t", size_payload);
-  
+    
   
   switch(ip->ip_p) {
       /*
@@ -464,20 +297,20 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       size_payload = ParseUDPPacket((u_char *)ip);
       break;
     case IPPROTO_ICMP:
-      printEmptyFormat("ICMP");
+      print_empty_string("ICMP");
       break;
     case IPPROTO_IP:
-      printEmptyFormat("IP");
+      print_empty_string("IP");
       break;
     case IPPROTO_IGMP:
-      printEmptyFormat("IGMP");
+      print_empty_string("IGMP");
       break;
     case IPPROTO_PIM:
-      printEmptyFormat("PIM");
+      print_empty_string("PIM");
       break;  
     default:
       printf("%d", ip->ip_p);
-      printEmptyFormat("");
+      print_empty_string("");
       break;
   }
   /*printf("%d\t",size_payload);*/
@@ -530,39 +363,37 @@ u_int ParseTCPPacket(const u_char *packet)
   
   ip = (struct sniff_ip*)(packet);
   
-  /*if((strcmp(srcHost, strHostIP)==0)|| (strcmp(dstHost, strHostIP)==0))*/
-  {
-    /* define/compute tcp header offset */
-    tcp = (struct sniff_tcp*)(packet + IPHDRSIZE);
-    size_tcp = TH_OFF(tcp)*4;
-    if (size_tcp < TCPHDRSIZE) {
-      printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-      return 0;
-    }
-    srcport = ntohs(tcp->th_sport);
-    dstport = ntohs(tcp->th_dport);
-    
-    /* define/compute tcp payload (segment) offset */
-    payload = (u_char *)(packet + IPHDRSIZE + TCPHDRSIZE);
-    
-    /* compute tcp payload (segment) size */
-    size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + size_tcp);
-    
-    printf("%d\t->\t", srcport);
-    printf(" %d\t", dstport);
-    
-    #if _DEBUG
-    printf("id: %d\t", htons(ip->ip_id));
-    printf("seq: %u\t", ntohl(tcp->th_seq));  
-    printf("ack: %u\t", ntohl(tcp->th_ack));  
-    printf("sum: %x\n", (ip->ip_sum));
-    if (size_payload > 0) {
-      printf("   Payload (%d bytes)", size_payload);
-      print_payload(payload, size_payload);
-    }      
-    showPacketDetails(ip, tcp); 
-    #endif
+  /* define/compute tcp header offset */
+  tcp = (struct sniff_tcp*)(packet + IPHDRSIZE);
+  size_tcp = TH_OFF(tcp)*4;
+  if (size_tcp < TCPHDRSIZE) {
+    printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
+    return 0;
   }
+  srcport = ntohs(tcp->th_sport);
+  dstport = ntohs(tcp->th_dport);
+  
+  /* define/compute tcp payload (segment) offset */
+  payload = (u_char *)(packet + IPHDRSIZE + TCPHDRSIZE);
+  
+  /* compute tcp payload (segment) size */
+  size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + size_tcp);
+  
+  printf("%d\t->\t", srcport);
+  printf(" %d\t", dstport);
+  
+  #if _DEBUG
+  printf("id: %d\t", htons(ip->ip_id));
+  printf("seq: %u\t", ntohl(tcp->th_seq));  
+  printf("ack: %u\t", ntohl(tcp->th_ack));  
+  printf("sum: %x\n", (ip->ip_sum));
+  if (size_payload > 0) {
+    printf("   Payload (%d bytes)", size_payload);
+    print_payload(payload, size_payload);
+  }      
+  showPacketDetails(ip, tcp); 
+  #endif
+  
   return size_payload;
 }
 
@@ -642,11 +473,11 @@ void print_interface(pcap_if_t *d)
           printf("\tIPv4: %s\t", iptos(a->addr, AF_INET, ip46str, sizeof(ip46str)));
         break;
         
-      /* we could enable IPv6.
+      /* we could enable IPv6.*/
       case AF_INET6:
         if (a->addr)
           printf("\tIPv6: %s\t", iptos(a->addr, AF_INET6, ip46str, sizeof(ip46str)));
-        break;*/
+        break;
         
       default:
         /*printf("\tAddress Family Name: Unknown\n");*/
@@ -656,30 +487,71 @@ void print_interface(pcap_if_t *d)
   printf("\n");  
 }
 
+/* TIMER */
+void *timer_event_initialize(void *threadid)
+{
+  /* EVENT: */
+  struct event_base *base;        /* to initialize eventing */
+ 	struct event timeout;
+	struct timeval tv;
+  
+	/* EVENT: Initalize the event library */
+	base = event_base_new();
+ 
+  printf ("created thread\n");
+	/* EVENT: Initalize one event */
+
+#if EV_PERSIST_FLAG  /*EV_PERSIST*/
+	event_assign(&timeout, base, -1, EV_PERSIST, timeout_callback, (void*) &timeout); 
+#else
+  event_assign(&timeout, base, -1, 0, timeout_callback, (void*) &timeout); 
+#endif
+
+  
+  evutil_timerclear(&tv);
+	tv.tv_sec = TIMEOUT;
+	event_add(&timeout, &tv);
+	evutil_gettimeofday(&lasttime, NULL);
+ 	event_base_dispatch(base);
+  
+	return (0);
+}
+
+/*MAIN()*/
 int main(int argc, char **argv)
 {
-  char *dev = NULL;               /* capture device name */
-  char errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
-  /*
-   * Expression			Description
-   * ----------			-----------
-   * ip					Capture all IP packets.
-   * tcp					Capture only TCP packets.
-   * tcp port 80			Capture only TCP packets with a port equal to 80.
-   * ip host 10.1.2.3		Capture all IP packets to or from host 10.1.2.3.
+  /* thread for the 1s TIMER */
+  int rc;
+  pthread_t threads;
+  
+  /* PCAP: */
+  /* capture device name */
+  char *dev = NULL;
+  
+  /* error buffer */
+  char errbuf[PCAP_ERRBUF_SIZE];  
+  
+  /* Example expressions:
    *
+   * Expression         Description
+   * ----------         -----------
+   * ip                 Capture all IP packets.
+   * tcp                Capture only TCP packets.
+   * tcp port 80        Capture only TCP packets with a port equal to 80.
+   * ip host 10.1.2.3		Capture all IP packets to or from host 10.1.2.3.
    ****************************************************************************
-   *   tcp[13] == 0x10) or (tcp[13] == 0x18) for ACK and ACK+PUSH
-   *  (tcp[13] == 0x10) for only ACK packets
-   *  ip for any IP packet
+   * (tcp[13] == 0x10) or (tcp[13] == 0x18) for ACK and ACK+PUSH
+   * (tcp[13] == 0x10) for only ACK packets
    */
+  
+  /* default filter expression is "IP" */
   char filter_exp[] = "ip";
   pcap_if_t *alldevices, *device, *chosendevice;
   pcap_addr_t *a;
   int i =0, j=0;
   int choice=-1;
   
-  /* Ctrl+C */
+  /* Ctrl+C, should this be in its own thread? */
   signal ( SIGINT, signal_handler);
   
   print_app_banner();
@@ -694,19 +566,20 @@ int main(int argc, char **argv)
   if (argc >= 2) {
     dev = argv[1];
   }
-  
+
+  /* check for capture filter expression on command-line */
   if (argc == 3) {
-    strcpy(filter_exp,argv[2]);
+    strncpy(filter_exp,argv[2], strlen(argv[2]));
   }
   
-  
+  /* find all interfaces, en0, en1, eth0, p2p0, lo, ..., etc. */
   if (pcap_findalldevs(&alldevices, errbuf) == -1) {
     fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
     exit(1);
   }
   
   if (argc == 1 ){
-    /* Print the list */
+    /* Print the list of interfaces */
     for(device=alldevices; device; device=device->next) {
       if(device->flags & PCAP_IF_LOOPBACK)
         break;
@@ -763,7 +636,7 @@ int main(int argc, char **argv)
         break;
     }
   }
-  printf("IP ADDR: %s\tMASK: %s\t",strHostIP, cmask);  
+  printf("IP ADDR: %s\tMASK: %s\t", strHostIP, cmask);  
   if (dev == NULL) {
     fprintf(stderr, "Couldn't find default device: %s\n", errbuf);
     exit(EXIT_FAILURE);
@@ -779,43 +652,60 @@ int main(int argc, char **argv)
   
   /* print capture info */
   printf("Device: %s\t", dev);
+  
   /*printf("Number of packets: %d\n", CAPTURE_COUNT);*/
   printf("Filter expression: %s\n", filter_exp);
   
-/*  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\tSrc. IP Addr\t->\tDest. IP Addr\n");*/
-  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tSize\tProto\tSPort\t->\tDPort\tSrc. IP Addr\t->\tDest. IP Addr\n");
 
-  /* open capture device */
+
+  /* PCAP: open capture device */
   handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf); 
   if (handle == NULL) {
     fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
     exit(EXIT_FAILURE);
   }
   
-  /* make sure we're capturing on an Ethernet device [2] */
+  /* PCAP: make sure we're capturing on an Ethernet device [2] */
   if (pcap_datalink(handle) != DLT_EN10MB) {
     fprintf(stderr, "%s is not an Ethernet\n", dev);
     exit(EXIT_FAILURE);
   }
   
-  /* compile the filter expression */
+  /* PCAP: compile the filter expression */
   if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
     fprintf(stderr, "Couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   
-  /* apply the compiled filter */
+  /* PCAP: apply the compiled filter */
   if (pcap_setfilter(handle, &fp) == -1) {
     fprintf(stderr, "Couldn't install filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   
-  /* now we can set our callback function */
+  printf("In main(): creating timer thread\n");
+  rc = pthread_create(&threads, NULL, timer_event_initialize, NULL);
+  if (rc){
+    printf("ERROR: in pthread_create(). Error No: %d\n", rc);
+    exit(-1);
+  }
+  
+  /*  
+   printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\t \
+   Src. IP Addr\t->\tDest. IP Addr\n");
+   */
+  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tSize\tProto\tSPort\t->\tDPort \
+         \tSrc. IP Addr\t->\tDest. IP Addr\n");
+  
+  
+  /* PCAP: now we can set our callback function */
   pcap_loop(handle, CAPTURE_COUNT, got_packet, NULL);
   printf("\nCapture complete.\n");
   
+  /*kill thread*/
+  pthread_exit(NULL);
   return 0;
 }
 
