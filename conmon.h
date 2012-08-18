@@ -63,6 +63,8 @@
 
 #define CAPTURE_COUNT -1           /* number of packets to capture, -1: non-stop */
 
+#define LOG_SIZE 10    /* Size of the vLog array or map*/
+
 /*
  from: http://www.beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getnameinfoman
  Finally, there are several flags you can pass, but here a a couple good ones. 
@@ -194,34 +196,6 @@ struct sniff_udp {
   
 };
 
-/* EVENT: */
-struct timeval lasttime;
-
-/* PCAP: */
-struct bpf_program fp;          /* compiled filter program (expression) */
-
-/* dot notation of the host address*/
-char strHostIP[INET_ADDRSTRLEN];
-/*host socket*/
-struct sockaddr *hostSockAddr;
-
-/* dot notation of the network address */
-char cnet[INET_ADDRSTRLEN];    
-/* network address */
-bpf_u_int32 net;     
-
-
-/* dot notation of the network mask    */
-char cmask[INET_ADDRSTRLEN];
-/* subnet mask */
-bpf_u_int32 mask;
-
-/* packet capture handle */
-pcap_t *handle;            
-
-/* packet counter */
-u_int pkt_count = 1;            
-
 
 /* flag for CROSS, INCOMING or OUTGOING Traffic*/
 typedef enum XIO {
@@ -234,24 +208,28 @@ typedef enum XIO {
  every second. */
 typedef struct bwLogger {
   u_int time;
-  u_int otherbw;
-  u_int tcpbw;
+  u_int total;
+  u_int xostr;  /* cross traffic*/
+  u_int inctr;
+  u_int outtr;
+  u_int tcp;  /* TCP */
   u_int tcp_inc;
   u_int tcp_out;
-  u_int udpbw;
+  u_int tcp_xos;
+  u_int udp;  /* UDP */
   u_int udp_inc;
   u_int udp_out;
-  u_int local;
+  u_int udp_xos;
+  u_int local;  /* local */
   u_int loc_inc;
   u_int loc_out;
   u_int loc_xos;
-  u_int external;
+  u_int external; /* external */
   u_int ext_inc;
   u_int ext_out;
   u_int ext_xos;
-}bwLog;                        
+}vLog;                        
 /* probably need a list to store this information*/
-
 
 /* app banner and usage*/
 void print_app_banner(void);
@@ -280,9 +258,9 @@ xio_flag checkInboundOrOutbound(char *sIp, char *dIp);
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
 
-u_int ParseUDPPacket (const u_char *packet);
+u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port);
 
-u_int ParseTCPPacket(const u_char *packet);
+u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port);
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
 
@@ -292,8 +270,46 @@ char* iptos(struct sockaddr *sockAddress, int af_flag, char *address, int addrle
 
 void print_interface(pcap_if_t *d);
 
-/* EVENT: */
+void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int isLocal, u_int payload);
 
+void reset_vlog(int location);
+
+/* EVENT: */
 void *timer_event_initialize(void *threadid);
+
+
+/* EVENT: */
+struct timeval lasttime;
+struct event_base *base;        /* to initialize eventing */
+
+
+/* PCAP: */
+struct bpf_program fp;          /* compiled filter program (expression) */
+
+/* dot notation of the host address*/
+char strHostIP[INET_ADDRSTRLEN];
+/*host socket*/
+struct sockaddr *hostSockAddr;
+
+/* dot notation of the network address */
+char cnet[INET_ADDRSTRLEN];    
+/* network address */
+bpf_u_int32 net;     
+
+
+/* dot notation of the network mask    */
+char cmask[INET_ADDRSTRLEN];
+/* subnet mask */
+bpf_u_int32 mask;
+
+/* packet capture handle */
+pcap_t *handle;            
+
+/* packet counter */
+u_int pkt_count = 1;
+
+/* vLog should be a list, but using Array for convenience.*/
+vLog vlog_pkt[LOG_SIZE], vlog_bw[LOG_SIZE];
+int calc_log, store_log;
 
 #endif
