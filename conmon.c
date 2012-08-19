@@ -226,9 +226,9 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
   {
     calc_log++;
     store_log++;
-    if(calc_log == 10)
+    if(calc_log == LOG_SIZE)
       calc_log = 0;
-    if(store_log == 10)
+    if(store_log == LOG_SIZE)
       store_log = 0;
     
     reset_vlog(calc_log);
