@@ -7,3 +7,5 @@ aclocal.m4
 configure.in
 logs/
 node/
+
+*.pdf
