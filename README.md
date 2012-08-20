@@ -37,6 +37,7 @@ Options:
 
 * Running without any parameters sets default PCAP filter="ip" and shows a menu to choose interfaces.
 For example:
+
 ```
 $ sudo ./conmon
 extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group
@@ -51,6 +52,7 @@ Enter the interface number (1-4):
 
 * If you do not want the choose the network interface then pass it as a command-line argument.
 For example:
+
 ```
 $ sudo ./conmon en1
 IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0	Device: en1	Filter expression: ip
@@ -58,6 +60,7 @@ IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0	Device: en1	Filter expression: ip
 
 * You may use an alternate [PCAP filter](http://wiki.wireshark.org/CaptureFilters). 
 For example:
+
 ```
 $ sudo ./conmon en1 tcp
 IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1	Filter expression: tcp
