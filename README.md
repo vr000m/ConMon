@@ -105,6 +105,7 @@ of the **UDP traffic** is shown below:
   needed currently, as data is stored locally!]
 * create an API so that applications can query the bit rate for a specific
   classifier
+* convert or allow ConMon to run as a daemon
 * There may be bugs related to IPv6 in some places. ConMon is a fork from
   my earlier project [Snapper](https://github.com/vr000m/Snapper)
 
