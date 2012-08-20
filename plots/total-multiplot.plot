@@ -29,7 +29,7 @@ set logscale y
 #set yr [0:3000]
 #unset xtics
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($5/125) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($5/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
 		
 set xtics nomirror
 set size 0.5,0.5
@@ -43,7 +43,7 @@ set logscale y
 unset key
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($7/125) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($7/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
 		
 		
 set size 0.5,0.5
@@ -56,7 +56,7 @@ set yrange [0.1:15000]
 set logscale y
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($9/125) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($9/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
 
 set size 0.5,0.5
 set origin .5,0.
@@ -68,6 +68,6 @@ set yrange [0.1:15000]
 set xtics border out scale 0,0 mirror rotate by -45  offset character 0, 0, 0 #font "Times,12" 0,5
 set logscale y
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($11/125) title 'Cross' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($11/125/$3) title 'Cross' with points lw 1 lt -1 lc -1 pt 1
 
 unset multiplot
