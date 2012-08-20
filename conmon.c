@@ -232,8 +232,9 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
       store_log = 0;
     
     reset_vlog(calc_log);
+#if FILE_STORE
     FILE *f2p;
-    f2p = fopen ("time_list.txt", "a+");
+    f2p = fopen (filestore_tsc, "a+");
     fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
            vlog_pkt[store_log].time,
            (u_int)gettime(),
@@ -279,6 +280,7 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
            vlog_pkt[store_log].ext_xos,         
            vlog_bw[store_log].ext_xos);
     fclose(f2p);
+#endif
 /*  printf("timeout(): %d (%f) log c: %d s: %d\n",(int)(newtime.tv_sec+(newtime.tv_usec/1.0e6)), elapsed, calc_log, store_log);*/
   }
   
@@ -424,7 +426,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   ip_version = IP_V(ip);
   size_ip = IP_HL(ip)*4;
   if (size_ip < IPHDRSIZE) {
-    fprintf(stderr,"* Invalid IP header length: %u bytes\n", size_ip);
+    fprintf(stderr,"Error: Invalid IP header length: %u bytes\n", size_ip);
     return;
   }
   
@@ -474,15 +476,16 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   }
   
   update_vlog(sec, calc_log, ip->ip_p, isXIO, isLocal, size_ip_payload);
-  
+#if FILE_STORE
   FILE *fp;
-  fp = fopen ("pkt_list.txt", "a+");
+  fp = fopen (filestore_pkt, "a+");
   fprintf(fp, "%d:\t%d\tv%d\t%s\t%s\t%d\t%s\t%d\t%d\t%s\t%s\n", 
           pkt_count++, sec, ip_version, (isLocal==1)?"LOC":"EXT", 
           (isXIO==0)?"XOS":(isXIO==1)?"INC":"OUT", size_ip_payload, 
           (ip->ip_p==IPPROTO_TCP)?"TCP":(ip->ip_p==IPPROTO_UDP)?"UDP":"OTH", 
           srcport, dstport, srcPkt, dstPkt);
   fclose(fp);
+#endif
 }
 
 void reset_vlog(int location)
@@ -528,7 +531,7 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port)
   tcp = (struct sniff_tcp*)(packet + IPHDRSIZE);
   size_tcp = TH_OFF(tcp)*4;
   if (size_tcp < TCPHDRSIZE) {
-    fprintf (stderr,"* Invalid TCP header length: %u bytes\n", size_tcp);
+    fprintf (stderr,"Error: Invalid TCP header length: %u bytes\n", size_tcp);
     return 0;
   }
   src_port = ntohs(tcp->th_sport);
@@ -629,13 +632,13 @@ void print_interface(pcap_if_t *d)
     {
       case AF_INET:
         if (a->addr)
-          printf("\tIPv4: %s\t", iptos(a->addr, AF_INET, ip46str, sizeof(ip46str)));
+          printf("IPv4: %s\t", iptos(a->addr, AF_INET, ip46str, sizeof(ip46str)));
         break;
         
       /* we could enable IPv6.*/
       case AF_INET6:
         if (a->addr)
-          printf("\tIPv6: %s\t", iptos(a->addr, AF_INET6, ip46str, sizeof(ip46str)));
+          printf("IPv6: %s\t", iptos(a->addr, AF_INET6, ip46str, sizeof(ip46str)));
         break;
         
       default:
@@ -705,9 +708,11 @@ int main(int argc, char **argv)
   pcap_addr_t *a;
   int i =0, j=0;
   int choice=-1;
+  u_int filelen1=0, filelen2=0;
   
   calc_log = 0;
   store_log = -1;
+  /*resetting the first data buffer*/
   reset_vlog(calc_log);
   
   /* Ctrl+C, should this be in its own thread? */
@@ -716,7 +721,7 @@ int main(int argc, char **argv)
   print_app_banner();
   
   if (argc > 3 ) {
-    fprintf(stderr, "error: unrecognized command-line options\n\n");
+    fprintf(stderr, "Error: unrecognized command-line options\n\n");
     print_app_usage();
     exit(EXIT_FAILURE);
   }
@@ -742,15 +747,15 @@ int main(int argc, char **argv)
     for(device=alldevices; device; device=device->next) {
       if(device->flags & PCAP_IF_LOOPBACK)
         break;
-      printf("%d. %s", ++i, device->name);
+      printf("%d. %s\t", ++i, device->name);
       if (device->description)
         printf("(%s)\t", device->description);
       else
-        fprintf(stderr,"(No description available)\t");
+        printf("(No Desc.)\t");
       print_interface(device);
     }
     if(i==0) {
-      fprintf (stderr,"\nNo interfaces found! Make sure libpcap is installed.\n");
+      fprintf (stderr,"Error: No interfaces found! Make sure libpcap is installed.\n");
       return -1;
     }
     
@@ -797,13 +802,13 @@ int main(int argc, char **argv)
   }
   printf("IP ADDR: %s\tMASK: %s\t", strHostIP, cmask);  
   if (dev == NULL) {
-    fprintf(stderr, "Couldn't find default device: %s\n", errbuf);
+    fprintf(stderr, "Error: couldn't find default device: %s\n", errbuf);
     exit(EXIT_FAILURE);
   }
 
   /* get network number and mask associated with capture device*/
   if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
-    fprintf(stderr, "Couldn't get netmask for device %s: %s\n",
+    fprintf(stderr, "Error: couldn't get netmask for device %s: %s\n",
             dev, errbuf);
     net = 0;
     mask = 0;
@@ -815,29 +820,41 @@ int main(int argc, char **argv)
   /*printf("Number of packets: %d\n", CAPTURE_COUNT);*/
   printf("Filter expression: %s\n", filter_exp);
   
+  
+  /*Setting up files to store data in */
+  filelen1=sizeof(DIR)+sizeof(PKT_LIST)+sizeof(filter_exp)+sizeof(dev);
+  filestore_pkt = (char*) calloc(1, filelen1);
+  sprintf(filestore_pkt, "%s/%s_%s_%s.txt", DIR, PKT_LIST, filter_exp, dev);
+  printf ("filename: %s \n", filestore_pkt);
+  
+  filelen2=sizeof(DIR)+sizeof(TIME_LIST)+sizeof(filter_exp)+sizeof(dev);
+  filestore_tsc = (char*) calloc(1, filelen2);
+  sprintf(filestore_tsc, "%s/%s_%s_%s.txt", DIR, TIME_LIST, filter_exp, dev);
+  printf ("filename: %s \n", filestore_tsc);
+  
   /* PCAP: open capture device */
   handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf); 
   if (handle == NULL) {
-    fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
+    fprintf(stderr, "Error: couldn't open device %s: %s\n", dev, errbuf);
     exit(EXIT_FAILURE);
   }
   
   /* PCAP: make sure we're capturing on an Ethernet device [2] */
   if (pcap_datalink(handle) != DLT_EN10MB) {
-    fprintf(stderr, "%s is not an Ethernet\n", dev);
+    fprintf(stderr, "Error: %s is not an Ethernet\n", dev);
     exit(EXIT_FAILURE);
   }
   
   /* PCAP: compile the filter expression */
   if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
-    fprintf(stderr, "Couldn't parse filter %s: %s\n",
+    fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   
   /* PCAP: apply the compiled filter */
   if (pcap_setfilter(handle, &fp) == -1) {
-    fprintf(stderr, "Couldn't install filter %s: %s\n",
+    fprintf(stderr, "Error: couldn't install filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
@@ -845,7 +862,7 @@ int main(int argc, char **argv)
   /*printf("In main(): creating timer thread\n");*/
   rc = pthread_create(&threads, NULL, timer_event_initialize, NULL);
   if (rc){
-    fprintf(stderr, "ERROR: in pthread_create(). Error No: %d\n", rc);
+    fprintf(stderr, "Error: in pthread_create(). Error No: %d\n", rc);
     exit(-1);
   }
   

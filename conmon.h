@@ -65,6 +65,12 @@
 
 #define LOG_SIZE 10    /* Size of the vLog array or map*/
 
+#define DIR "logs"
+#define PKT_LIST "pkt_list"
+#define TIME_LIST "time_list"
+
+#define FILE_STORE 1
+
 /*
  from: http://www.beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getnameinfoman
  Finally, there are several flags you can pass, but here a a couple good ones. 
@@ -75,7 +81,7 @@
  getnameinfo() will put a string version of the IP address in host instead.)
  */
 #ifndef NI_NUMERICHOST
-# define NI_NUMERICHOST 2
+  #define NI_NUMERICHOST 2
 #endif
 
 /* Ethernet header */
@@ -311,5 +317,9 @@ u_int pkt_count = 1;
 /* vLog should be a list, but using Array for convenience.*/
 vLog vlog_pkt[LOG_SIZE], vlog_bw[LOG_SIZE];
 int calc_log, store_log;
+
+/* File names to store data */
+char *filestore_pkt;
+char *filestore_tsc;
 
 #endif
