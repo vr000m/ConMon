@@ -18,7 +18,7 @@ set size 0.5,0.5
 set origin 0.0,0.5
 set grid
 
-set title "a) Total"
+set title "a) Combined"
 #set xrange [0:3600]
 set yrange [0.1:15000]
 set ylabel "Throughput (kbps)" offset 1,0
@@ -29,7 +29,7 @@ set logscale y
 #set yr [0:3000]
 #unset xtics
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($13/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($13/125/$3) title 'Combined' with points lw 1 lt -1 lc -1 pt 1
 		
 set xtics nomirror
 set size 0.5,0.5
@@ -43,7 +43,7 @@ set logscale y
 unset key
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($15/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($15/125/$3) title 'Incoming' with points lw 1 lt -1 lc -1 pt 1
 		
 		
 set size 0.5,0.5
@@ -56,11 +56,11 @@ set yrange [0.1:15000]
 set logscale y
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($17/125/$3) title 'Total' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($17/125/$3) title 'Outgoing' with points lw 1 lt -1 lc -1 pt 1
 
 set size 0.5,0.5
 set origin .5,0.
-set title "d) Cross"
+set title "d) Cross-traffic"
 unset ylabel
 set xlabel "time (s)"
 #set xrange [0:3600]
