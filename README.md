@@ -7,9 +7,10 @@ endpoint. It is based on the `Sniffer` example in `libpcap (tcpdump)`.
 * Each is further classified as combined, inbound, outbound and background [done]
 
 #### Extras (yet to be implemented)
-* IPv4 and IPv6?
-* RTP (for RTCWEB, MPRTP, RTSP, etc.)?
-* port 80 and 443?
+* IP: IPv4 and IPv6
+* Multimedia: RTP (for RTCWEB, MPRTP, RTSP, etc.)
+* HTTP(S): port 80 and 443
+* LEDBAT: e.g., Bittorrent
 
 ### Compiling ConMon
 The project comes with a basic Makefile and depends on the following libraries:
