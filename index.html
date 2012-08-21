@@ -30,8 +30,8 @@
       <section>
         <h3>Synopsis</h3>
 
-<p>ConMon is a command line utility that measures the traffic to and from an
-endpoint. ConMon passively monitors the IP packets and classifies them to measure the bit rate for each of the classifiers. It is based on the <code>Sniffer</code> example in <code>libpcap (tcpdump)</code>.</p>
+<hr><p>ConMon is a command line utility that measures the traffic to and from an
+endpoint. ConMon passively monitors the IP packets and classifies them to measure the bit rate for each of the classifiers. It is based on the <a href="http://www.tcpdump.org/sniffex.c">Sniffer example</a> in <code>libpcap (tcpdump)</code>.</p>
 
 <h3>Current classifiers:</h3>
 
@@ -41,8 +41,9 @@ endpoint. ConMon passively monitors the IP packets and classifies them to measur
 </ul><h4>Extras (yet to be implemented)</h4>
 
 <ul>
-<li>IP: IPv4 and IPv6</li>
-<li>Multimedia: RTP (for RTCWEB, MPRTP, RTSP, etc.)</li>
+<li>IPv4 and IPv6</li>
+<li>Multimedia Transport: RTP (for RTCWEB, MPRTP, RTSP, etc.)</li>
+<li>Multimedia Signaling: STUN, ICE packets</li>
 <li>HTTP(S): port 80 and 443</li>
 <li>LEDBAT: e.g., Bittorrent</li>
 </ul><h3>Compiling ConMon</h3>
@@ -53,7 +54,11 @@ endpoint. ConMon passively monitors the IP packets and classifies them to measur
 <li><a href="http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz">libpcap</a></li>
 <li><a href="https://github.com/downloads/libevent/libevent/libevent-2.0.19-stable.tar.gz">libevent</a></li>
 <li>[pthreads]</li>
-</ul><h3>Running ConMon</h3>
+</ul><p>ConMon has two threads:
+1. Main Thread: captures packets based on <code>filter expression</code> and store packets to "Packet Logs".
+2. Event Thread: times out every <code>1s</code> and stores the {num_pkts, bytes} per classifier to the "Time Logs".</p>
+
+<h3>Running ConMon</h3>
 
 <p>ConMon requires root privileges to capture packets. Until <a href="https://github.com/vr000m/conmon/tree/v0.2.1">ConMon
 v0.2.1</a> the captured packets
@@ -67,6 +72,10 @@ in <code>logs/</code></p>
 <ul>
 <li>Packet Logs: <code>pkt_list_$filter_$interface.txt</code> (e.g.: pkt_list_ip_en1.txt)</li>
 <li>Time Logs: <code>time_list_$filter_$interface.txt</code> (e.g.: time_list_ip_en1.txt)</li>
+</ul><h3>ConMon Usage</h3>
+
+<ul>
+<li>ConMon has two command line parameters: interface and filter.</li>
 </ul><pre><code>$./conmon --help
 Usage: conmon [interface] [filter]
 
@@ -90,9 +99,10 @@ Enter the interface number (1-4):
 </code></pre>
 
 <ul>
-<li>If you do not want the choose the network interface then pass it as a command-line argument.
-For example:</li>
-</ul><pre><code>$ sudo ./conmon en1
+<li>If you do not want the choose the network interface every time then pass it as a command-line argument. You can use <code>ifconfig</code> to lookup the interfaces.</li>
+</ul><p>For example:</p>
+
+<pre><code>$ sudo ./conmon en1
 IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0   Device: en1 Filter expression: ip
 </code></pre>
 
