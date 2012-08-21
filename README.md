@@ -1,14 +1,20 @@
 ### Synopsis 
+***
+
 ConMon is a command line utility that measures the traffic to and from an
-endpoint. It is based on the `Sniffer` example in `libpcap (tcpdump)`.
+endpoint. ConMon passively monitors the IP packets and classifies them to 
+measure the bit rate for each of the classifiers. 
+
+It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in `libpcap (tcpdump)`.
 
 ### Current classifiers:
 * Total, TCP, UDP, local, external [done] 
 * Each is further classified as combined, inbound, outbound and background [done]
 
 #### Extras (yet to be implemented)
-* IP: IPv4 and IPv6
-* Multimedia: RTP (for RTCWEB, MPRTP, RTSP, etc.)
+* IPv4 and IPv6
+* Multimedia Transport: RTP (for RTCWEB, MPRTP, RTSP, etc.)
+* Multimedia Signaling: STUN, ICE packets
 * HTTP(S): port 80 and 443
 * LEDBAT: e.g., Bittorrent
 
@@ -17,6 +23,10 @@ The project comes with a basic Makefile and depends on the following libraries:
 * [libpcap](http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz)
 * [libevent](https://github.com/downloads/libevent/libevent/libevent-2.0.19-stable.tar.gz)
 * [pthreads]
+
+ConMon has two threads:
+1. Main Thread: captures packets based on `filter expression` and store packets to "Packet Logs".
+2. Event Thread: times out every `1s` and stores the {num_pkts, bytes} per classifier to the "Time Logs".
 
 ### Running ConMon
 ConMon requires root privileges to capture packets. Until [ConMon
@@ -29,6 +39,9 @@ preserve their privacy. ConMon
 in `logs/`
 * Packet Logs: `pkt_list_$filter_$interface.txt` (e.g.: pkt_list_ip_en1.txt)
 * Time Logs: `time_list_$filter_$interface.txt` (e.g.: time_list_ip_en1.txt)
+
+### ConMon Usage
+* ConMon has two command line parameters: interface and filter.
 
 ```
 $./conmon --help
@@ -45,17 +58,16 @@ For example:
 
 ```
 $ sudo ./conmon
-extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group
-THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM.
 
-1. en0  (No Desc.)	
+1. en0  (No Desc.)    
 2. fw0	(No Desc.)	
 3. en1	(No Desc.)	IPv6: fe80::xx:xx:xx:xx%en1	IPv4: xx.xx.xx.xx	
 4. p2p0	(No Desc.)	
 Enter the interface number (1-4):
 ```
 
-* If you do not want the choose the network interface then pass it as a command-line argument.
+* If you do not want the choose the network interface every time then pass it as a command-line argument. You can use `ifconfig` to lookup the interfaces.
+
 For example:
 
 ```
@@ -96,6 +108,14 @@ Each graph is a
 shows the combined, incoming, outgoing and cross-traffic. An Example plot
 of the **UDP traffic** is shown below: 
 ![Example ConMon plot](http://www.netlab.tkk.fi/~varun/share_pub/time_list_udp-0.png)
+
+A bit about the graph:
+> The first spike (upto 10 Mbps) is caused by Bittorrent. I downloaded ~300MB torrent.
+> The second cluster of spikes is caused by Skype. I initially started with
+> an audio call and later upgraded to video, therefore, we observe larger spikes
+> You may notice that it is a bit assymetric (compare the `incoming` and `outgoing` throughput
+> plots,the magnitude of the spikes are different) this is due to the rate-control algorithm 
+> at the the two ends.
 
 ### TODO
 * create above classifiers [done]
