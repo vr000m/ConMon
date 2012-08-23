@@ -162,6 +162,12 @@ double gettime()
 	return (t_now.tv_sec+t_now.tv_usec/1000000.0);
 }
 
+void reset_vlog(int location)
+{ 
+  memset(&vlog_pkt[location], 0, sizeof(vLog));
+  memset(&vlog_bw[location], 0, sizeof(vLog));
+}
+
 u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
 {
   /*
@@ -184,7 +190,12 @@ u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
 xio_flag checkInboundOrOutbound(char *sIp, char *dIp)
 {
   xio_flag x;
-  if (strcmp(sIp, strHostIP)==0) {
+  
+  if ((strcmp(sIp, strHostIP)==0) && (strcmp(dIp, strHostIP)==0)) 
+  {
+    x= XIO_HOST;
+  }
+  else if (strcmp(sIp, strHostIP)==0) {
     /*printf("Out\t");*/
     x= XIO_OUTGOING;
   }
@@ -205,12 +216,12 @@ xio_flag checkInboundOrOutbound(char *sIp, char *dIp)
 void timeout_callback(evutil_socket_t fd, short event, void *arg)
 {
 	struct timeval newtime, difference;
-
-#if !EV_PERSIST_FLAG
- struct event *timeout = arg; 
- struct timeval tv;
-#endif
   double elapsed;
+  
+#if !EV_PERSIST_FLAG
+  struct event *timeout = arg; 
+  struct timeval tv;
+#endif
   
 	evutil_gettimeofday(&newtime, NULL);
 	evutil_timersub(&newtime, &lasttime, &difference);
@@ -235,7 +246,22 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
 #if FILE_STORE
     FILE *f2p;
     f2p = fopen (filestore_tsc, "a+");
-    fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+    if(using_loopback ==1) {
+      fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+           vlog_pkt[store_log].time,
+           (u_int)gettime(),
+           elapsed,
+           vlog_pkt[store_log].host,
+           vlog_bw[store_log].host,
+           vlog_pkt[store_log].host_tcp,
+           vlog_bw[store_log].host_tcp,
+           vlog_pkt[store_log].host_udp,
+           vlog_bw[store_log].host_udp,
+           vlog_pkt[store_log].host_oth,
+           vlog_bw[store_log].host_oth);
+    }
+    else {
+      fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
            vlog_pkt[store_log].time,
            (u_int)gettime(),
            elapsed,
@@ -279,6 +305,7 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
            vlog_bw[store_log].ext_out,
            vlog_pkt[store_log].ext_xos,         
            vlog_bw[store_log].ext_xos);
+    }
     fclose(f2p);
 #endif
 /*  printf("timeout(): %d (%f) log c: %d s: %d\n",(int)(newtime.tv_sec+(newtime.tv_usec/1.0e6)), elapsed, calc_log, store_log);*/
@@ -291,8 +318,7 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
 #endif
 }
 
-
-/* maybe this should be inside a MUTEX*/
+/* TODO: maybe this should be inside a MUTEX*/
 void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int isLocal, u_int payload) 
 {
   vlog_pkt[location].time = sec;
@@ -347,6 +373,9 @@ void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int is
         vlog_bw[location].ext_out += payload;
       }
       break;
+    case XIO_HOST:
+      /*if we are not doing loopback then we can ignore these packets?*/
+      break;
   }
   
   switch(proto) {
@@ -367,6 +396,9 @@ void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int is
           vlog_pkt[location].tcp_out++;
           vlog_bw[location].tcp_out +=payload;
           break;
+        case XIO_HOST:
+      	  /*if we are not doing loopback then we can ignore these packets?*/
+      	  break;
       }
       break;
     case IPPROTO_UDP:
@@ -386,10 +418,38 @@ void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int is
           vlog_pkt[location].udp_out++;
           vlog_bw[location].udp_out +=payload;
           break;
+        case XIO_HOST:
+      	  /*if we are not doing loopback then we can ignore these packets?*/
+      	  break;
       }
       break;
   }
   /*printf("packets(): %d log c: %d s: %d\n", sec, calc_log, store_log);*/
+}
+
+/* TODO: if we put update_vlog() in a mutex then maybe this should also be inside a MUTEX*/
+void update_vlog_lo(u_int sec, int location, u_char proto, u_int isLocal, u_int payload)
+{
+  vlog_pkt[location].time = sec;
+  vlog_bw[location].time = sec;
+  
+  vlog_pkt[location].host++;
+  vlog_bw[location].host += payload;
+  
+  switch(proto) {
+    case IPPROTO_TCP:
+      vlog_pkt[location].host_tcp++;
+      vlog_bw[location].host_tcp += payload;
+      break;
+    case IPPROTO_UDP:
+      vlog_pkt[location].host_udp++;
+      vlog_bw[location].host_udp += payload;
+      break;
+    default:
+      vlog_pkt[location].host_oth++;
+      vlog_bw[location].host_oth += payload;
+      break;
+  }
 }
 
 /*
@@ -399,14 +459,17 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 {
   const struct sniff_ethernet *ethernet;  /* The ethernet header */
   const struct sniff_ip *ip;              /* The IP header */
+  const u_char *payload;                  /* Packet payload */
+
   u_int size_ip;
   int ip_version;
-  char srcPkt[INET_ADDRSTRLEN];
-  char dstPkt[INET_ADDRSTRLEN];
+  char srcIPaddr[INET_ADDRSTRLEN];
+  char dstIPaddr[INET_ADDRSTRLEN];
   
   xio_flag isXIO;
   
   int isLocal=-1;
+  int rtp_flag = 0;
   
   u_int srcport=0;
   u_int dstport=0;
@@ -430,8 +493,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     return;
   }
   
-  inet_ntop(AF_INET, &(ip->ip_src), srcPkt, INET_ADDRSTRLEN);
-  inet_ntop(AF_INET, &(ip->ip_dst), dstPkt, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &(ip->ip_src), srcIPaddr, INET_ADDRSTRLEN);
+  inet_ntop(AF_INET, &(ip->ip_dst), dstIPaddr, INET_ADDRSTRLEN);
   
   /*
    First "logical AND" both src and destination ipaddress with netmask
@@ -441,7 +504,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
    If both src and destination match then local else external.
    In each categoy the comunication can be inbound/outbound/cross traffic
   */
-  isXIO = checkInboundOrOutbound(srcPkt, dstPkt);
+  isXIO = checkInboundOrOutbound(srcIPaddr, dstIPaddr);
   
   if(checkIfIpLocal((ip->ip_src).s_addr, AF_INET)==1 && checkIfIpLocal((ip->ip_dst).s_addr, AF_INET)==1){
     isLocal = 1;
@@ -462,6 +525,20 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       break;
     case IPPROTO_UDP:
       size_payload = ParseUDPPacket((u_char *)ip, srcport, dstport);
+      /* TODO: Check if this is an RTP packet? */
+      if(size_payload>RTP_HDR_SZ )//&& isXIO != XIO_CROSS)
+      {
+        printf("%s\t%d\t%s\t%d\t%d\n", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);
+        payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
+        rtp_flag = isRTP(payload);
+        if (size_payload > 0 && rtp_flag) {
+        #if _DEBUG
+          printf("Payload (%d bytes)\n", size_payload);
+          print_payload(payload, size_payload);
+        #endif
+        }
+      }
+      
       break;
     case IPPROTO_ICMP:
       break;
@@ -474,24 +551,70 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     default:
       break;
   }
+  if(isXIO==XIO_HOST)
+  	update_vlog_lo(sec, calc_log, ip->ip_p, isLocal, size_ip_payload);
+  else
+  	update_vlog(sec, calc_log, ip->ip_p, isXIO, isLocal, size_ip_payload);
   
-  update_vlog(sec, calc_log, ip->ip_p, isXIO, isLocal, size_ip_payload);
 #if FILE_STORE
   FILE *fp;
   fp = fopen (filestore_pkt, "a+");
-  fprintf(fp, "%d:\t%d\tv%d\t%s\t%s\t%d\t%s\t%d\t%d\t%s\t%s\n", 
-          pkt_count++, sec, ip_version, (isLocal==1)?"LOC":"EXT", 
-          (isXIO==0)?"XOS":(isXIO==1)?"INC":"OUT", size_ip_payload, 
-          (ip->ip_p==IPPROTO_TCP)?"TCP":(ip->ip_p==IPPROTO_UDP)?"UDP":"OTH", 
-          srcport, dstport, srcPkt, dstPkt);
+  fprintf(fp, "%d:\t%d\tv%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n", 
+          pkt_count++, sec, ip_version, size_ip_payload,
+          (isLocal==1)?"LOC":"EXT", (isXIO==0)?"XOS":(isXIO==1)?"INC":"OUT",  
+          (ip->ip_p==IPPROTO_TCP)?"TCP":(ip->ip_p==IPPROTO_UDP)?(rtp_flag==0)?"UDP":(rtp_flag==1)?"RTP":"RTCP":"OTH", 
+          srcport, dstport, srcIPaddr, dstIPaddr);
   fclose(fp);
 #endif
 }
 
-void reset_vlog(int location)
-{ 
-  memset(&vlog_pkt[location], 0, sizeof(vLog));
-  memset(&vlog_bw[location], 0, sizeof(vLog));
+u_int isRTP (const u_char *packet)
+{
+  sniff_rtp_t *p;
+  u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver;
+  p = (sniff_rtp_t*) packet;
+
+  // Extract header information
+  alt_ver = (u_int)(p->vpxcc & 0xc0);
+  ver =RTP_V(p);
+  marker = RTP_M(p);
+  pt  =RTP_PT(p);
+  seqno=(int)ntohs(p->seq);
+  timestamp=ntohl(p->timestamp);
+  ssrc=ntohl(p->ssrc);
+  
+#if _DEBUG 
+  printf ("%d\t", ver);
+  printf ("%d\t", RTP_P(p));
+  printf ("%d\t", RTP_X(p));
+  printf ("%d\t", RTP_CC(p));
+  printf ("%d\t", marker);
+  printf ("%d\t", pt);
+  printf ("%d\t", seqno);
+  /* 
+  	BUG: something wierd is happening with the RTP timestamps
+  	it seems to be jumping around? maybe an endian-ness problem?
+  */
+  printf ("%d\t", timestamp);
+  printf ("%x\n", ssrc);
+#else
+  fprintf(stderr,"%f\t%d\t%d\t%d\t%d\t%x\n", gettime(), marker, pt, seqno, timestamp, ssrc);
+#endif
+  
+  /*
+  HASH the srcip, port, destip, port to create a unique filename
+  or use ssrc? 
+  */
+  
+  if(ver==2)
+  {
+  	if(pt < 200)
+      return 1; /* is RTP */
+    else
+      return 2; /* is RTCP */
+  }
+  else
+    return 0;
 }
 
 u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port)
@@ -507,11 +630,19 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port)
   src_port = ntohs(udp->uh_sport);
   dst_port = ntohs(udp->uh_dport);
   
-  /* define/compute tcp payload (segment) offset */
-  payload = (u_char *)(packet + IPHDRSIZE + UDPHDRSIZE);
-  
-  /* compute tcp payload (segment) size */
   size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + UDPHDRSIZE);
+  
+  payload = (u_char *)(packet + IPHDRSIZE + UDPHDRSIZE);
+  #if _DEBUG
+  /* define/compute udp payload (segment) offset */
+  
+  if (size_payload > 0) {
+	printf("Payload (%d bytes)\n", size_payload);
+    print_payload(payload, size_payload);
+  }    
+  #endif
+  
+  /* compute udp payload (segment) size */
   
   return size_payload;
 }
@@ -560,7 +691,6 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port)
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph)
 {
-  /*should cleanup: 0 to _DEBUG*/
 #if _DEBUG
   printf(" vhl=%x\n",iph->ip_vhl);       
   printf(" tos=%x\n",iph->ip_tos);       
@@ -655,17 +785,17 @@ void *timer_event_initialize(void *threadid)
   /* EVENT: */
  	struct event timeout;
 	struct timeval tv;
+	int flags=0;
   
 	/* EVENT: Initalize the event library */
 	base = event_base_new();
  
   /* EVENT: Initalize one event */
 #if EV_PERSIST_FLAG  /*EV_PERSIST*/
-	event_assign(&timeout, base, -1, EV_PERSIST, timeout_callback, (void*) &timeout); 
-#else
-  event_assign(&timeout, base, -1, 0, timeout_callback, (void*) &timeout); 
+	flags=EV_PERSIST;
 #endif
 
+  event_assign(&timeout, base, -1, flags, timeout_callback, (void*) &timeout); 
   
   evutil_timerclear(&tv);
 	tv.tv_sec = TIMEOUT;
@@ -702,17 +832,24 @@ int main(int argc, char **argv)
    * (tcp[13] == 0x10) for only ACK packets
    */
   
-  /* default filter expression is "IP" */
-  char filter_exp[] = "ip";
+  /* default filter expression is "IP" 
+  	BUG: filter should be dynamic size not 127. 
+  	calloc it.
+  */
+  char filter_exp[127] = "ip";
   pcap_if_t *alldevices, *device, *chosendevice;
   pcap_addr_t *a;
   int i =0, j=0;
   int choice=-1;
   u_int filelen1=0, filelen2=0;
   
+  /* setting global variables */
+  pkt_count = 1;
   calc_log = 0;
   store_log = -1;
-  /*resetting the first data buffer*/
+  using_loopback=0;
+  
+  /* resetting the first data buffer */
   reset_vlog(calc_log);
   
   /* Ctrl+C, should this be in its own thread? */
@@ -745,8 +882,10 @@ int main(int argc, char **argv)
   if (argc == 1 ){
     /* Print the list of interfaces */
     for(device=alldevices; device; device=device->next) {
+    #if BLOCK_LOOPBACK
       if(device->flags & PCAP_IF_LOOPBACK)
         break;
+    #endif
       printf("%d. %s\t", ++i, device->name);
       if (device->description)
         printf("(%s)\t", device->description);
@@ -781,6 +920,8 @@ int main(int argc, char **argv)
   }
   
   dev=chosendevice->name;
+  if(chosendevice->flags & PCAP_IF_LOOPBACK)
+    using_loopback=1;
   
   for(a=chosendevice->addresses;a;a=a->next) {        
     switch(a->addr->sa_family)

@@ -15,11 +15,17 @@
 #define APP_COPYRIGHT   "extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group"
 #define APP_DISCLAIMER  "THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM.\n"
 
+#include <event2/event-config.h>
 #include <event2/event.h>
 #include <event2/event_struct.h>
 #include <event2/util.h>
 
+#include <sys/stat.h>
+
+#include <sys/types.h>
+
 #include <pthread.h>
+#include <fcntl.h>
 
 #include <pcap.h>
 #include <stdio.h>
@@ -34,13 +40,18 @@
 #include <signal.h>
 #include <unistd.h>
 #include <netdb.h>
-#include <sys/time.h>
 #include <time.h>
 
-#define __USE_BSD         /* Using BSD IP header           */ 
+#ifdef _EVENT_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+//#define __USE_BSD         /* Using BSD IP header           */ 
 #include <netinet/ip.h>   /* Internet Protocol             */ 
-#define __FAVOR_BSD       /* Using BSD TCP header          */ 
+//#define __FAVOR_BSD       /* Using BSD TCP header          */ 
 #include <netinet/tcp.h>  /* Transmission Control Protocol */
+
+#include "rtp.h"
 
 #define TIMEOUT 1
 #define EV_PERSIST_FLAG 1
@@ -60,6 +71,8 @@
 #define UDPHDRSIZE  sizeof(struct sniff_udp)    /* 8: length of UDP header */	
 
 /* INET_ADDRSTRLEN is 16 */
+
+#define BLOCK_LOOPBACK 0
 
 #define CAPTURE_COUNT -1           /* number of packets to capture, -1: non-stop */
 
@@ -204,15 +217,16 @@ struct sniff_udp {
 
 
 /* flag for CROSS, INCOMING or OUTGOING Traffic*/
-typedef enum XIO {
+typedef enum {
   XIO_CROSS = 0,
   XIO_INCOMING,
-  XIO_OUTGOING
+  XIO_OUTGOING,
+  XIO_HOST
 }xio_flag;                      
 
 /* a structure to hold all the bytes sent and received 
  every second. */
-typedef struct bwLogger {
+typedef struct {
   u_int time;
   u_int total;
   u_int xostr;  /* cross traffic*/
@@ -234,6 +248,10 @@ typedef struct bwLogger {
   u_int ext_inc;
   u_int ext_out;
   u_int ext_xos;
+  u_int host;	/* loopback */
+  u_int host_tcp;
+  u_int host_udp;
+  u_int host_oth; 
 }vLog;                        
 /* probably need a list to store this information*/
 
@@ -268,6 +286,8 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port);
 
 u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port);
 
+u_int isRTP (const u_char *packet);
+
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
 
 void readTCPflag(u_char tcp_flags);
@@ -277,6 +297,8 @@ char* iptos(struct sockaddr *sockAddress, int af_flag, char *address, int addrle
 void print_interface(pcap_if_t *d);
 
 void update_vlog(u_int sec, int location, u_char proto, xio_flag isXIO, u_int isLocal, u_int payload);
+
+void update_vlog_lo(u_int sec, int location, u_char proto, u_int isLocal, u_int payload);
 
 void reset_vlog(int location);
 
@@ -312,11 +334,12 @@ bpf_u_int32 mask;
 pcap_t *handle;            
 
 /* packet counter */
-u_int pkt_count = 1;
+u_int pkt_count;
 
 /* vLog should be a list, but using Array for convenience.*/
 vLog vlog_pkt[LOG_SIZE], vlog_bw[LOG_SIZE];
 int calc_log, store_log;
+int using_loopback;
 
 /* File names to store data */
 char *filestore_pkt;

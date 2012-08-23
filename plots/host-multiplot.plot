@@ -1,4 +1,4 @@
-name=system("echo time_list_external") 
+name=system("echo time_list_host") 
 #time=0
 time=system("date +%Y_%m_%d_%H_%M_%S")
 #set term canvas
@@ -29,12 +29,12 @@ set logscale y
 #set yr [0:3000]
 #unset xtics
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($37/125/$3) title 'Combined' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($5/125/$3) title 'Combined' with points lw 1 lt -1 lc -1 pt 1
 		
 set xtics nomirror
 set size 0.5,0.5
 set origin 0.0,0.0
-set title "c) Incoming"
+set title "c) TCP"
 set ylabel "Throughput (kbps)" offset 1,0
 set xlabel "time (s)"#set xrange [0:3600]
 #set yrange [0.1:15000]
@@ -43,12 +43,12 @@ set logscale y
 unset key
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($39/125/$3) title 'Incoming' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($7/125/$3) title 'TCP' with points lw 1 lt -1 lc -1 pt 1
 		
 		
 set size 0.5,0.5
 set origin 0.5,0.5
-set title "b) Outgoing"
+set title "b) UDP"
 unset xlabel
 unset ylabel
 #set xrange [0:3600]
@@ -56,11 +56,11 @@ unset ylabel
 set logscale y
 
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($41/125/$3) title 'Outgoing' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($9/125/$3) title 'UDP' with points lw 1 lt -1 lc -1 pt 1
 
 set size 0.5,0.5
 set origin .5,0.
-set title "d) Cross-traffic"
+set title "d) Other Packets"
 unset ylabel
 set xlabel "time (s)"
 #set xrange [0:3600]
@@ -68,6 +68,6 @@ set xlabel "time (s)"
 set xtics border out scale 0,0 mirror rotate by -45  offset character 0, 0, 0 #font "Times,12" 0,5
 set logscale y
 
-plot "../logs/time_list.txt" using ($1-timeoffset):($43/125/$3) title 'Cross' with points lw 1 lt -1 lc -1 pt 1
+plot "../logs/time_list.txt" using ($1-timeoffset):($11/125/$3) title 'Other' with points lw 1 lt -1 lc -1 pt 1
 
 unset multiplot
