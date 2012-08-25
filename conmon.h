@@ -286,7 +286,9 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port);
 
 u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port);
 
-u_int isRTP (const u_char *packet);
+u_int isRTP (const u_char *packet, const u_long &jamboreeHash);
+
+u_long createHash(u_long ipSrc, u_int srcport, u_long ipDest, u_int dstport);
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
 

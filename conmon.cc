@@ -1,10 +1,10 @@
 /*
-
-  conmon
-
-  Created by Varun Singh on 10/3/2012.
-
-
+ 
+ conmon
+ 
+ Created by Varun Singh on 10/3/2012.
+ 
+ 
  Note a lot of code is borrowed from here and there.
  
  gcc -Wall -pedantic conmon.c -lpcap -o conmon
@@ -21,8 +21,7 @@
 #include "conmon.h"
 
 void print_app_banner(void)
-{
-  
+{  
   printf("%s - %s\n", APP_NAME, APP_DESC);
   printf("%s\n", APP_COPYRIGHT);
   printf("%s\n", APP_DISCLAIMER);
@@ -36,7 +35,7 @@ void signal_handler(int signal)
   pcap_freecode(&fp);
   pcap_close(handle);
 #if EV_PERSIST_FLAG
-/*BUG: remove event*/
+  /*BUG: remove event*/
 #endif
   exit(0);
 }
@@ -62,46 +61,46 @@ void print_app_usage(void)
  */
 void print_hex_ascii_line(const u_char *payload, u_int len, int offset)
 {
-
-    u_int i;
-    u_int gap;
-    const u_char *ch;
-
-    /* offset */
-    printf("%05d   ", offset);
-    
-    /* hex */
-    ch = payload;
-    for(i = 0; i < len; i++) {
-        printf("%02x ", *ch);
-        ch++;
-        /* print extra space after 8th byte for visual aid */
-        if (i == 7)
-            printf(" ");
+  
+  u_int i;
+  u_int gap;
+  const u_char *ch;
+  
+  /* offset */
+  printf("%05d   ", offset);
+  
+  /* hex */
+  ch = payload;
+  for(i = 0; i < len; i++) {
+    printf("%02x ", *ch);
+    ch++;
+    /* print extra space after 8th byte for visual aid */
+    if (i == 7)
+      printf(" ");
+  }
+  /* print space to handle line less than 8 bytes */
+  if (len < 8)
+    printf(" ");
+  
+  /* fill hex gap with spaces if not full line */
+  if (len < 16) {
+    gap = 16 - len;
+    for (i = 0; i < gap; i++) {
+      printf("   ");
     }
-    /* print space to handle line less than 8 bytes */
-    if (len < 8)
-        printf(" ");
-    
-    /* fill hex gap with spaces if not full line */
-    if (len < 16) {
-        gap = 16 - len;
-        for (i = 0; i < gap; i++) {
-            printf("   ");
-        }
-    }
-    printf("   ");
-    
-    /* ascii (if printable) */
-    ch = payload;
-    for(i = 0; i < len; i++) {
-        if (isprint(*ch))
-            printf("%c", *ch);
-        else
-            printf(".");
-        ch++;
-    }
-    printf("\n");
+  }
+  printf("   ");
+  
+  /* ascii (if printable) */
+  ch = payload;
+  for(i = 0; i < len; i++) {
+    if (isprint(*ch))
+      printf("%c", *ch);
+    else
+      printf(".");
+    ch++;
+  }
+  printf("\n");
 }
 
 /*
@@ -109,41 +108,41 @@ void print_hex_ascii_line(const u_char *payload, u_int len, int offset)
  */
 void print_payload(const u_char *payload, u_int len)
 {
-
-    u_int len_rem = len;
-    u_int line_width = 16;            /* number of bytes per line */
-    u_int line_len;
-    u_int offset = 0;                 /* zero-based offset counter */
-    const u_char *ch = payload;
-
-    if (len <= 0)
-        return;
-
-    /* data fits on one line */
-    if (len <= line_width) {
-        print_hex_ascii_line(ch, len, offset);
-        return;
+  
+  u_int len_rem = len;
+  u_int line_width = 16;            /* number of bytes per line */
+  u_int line_len;
+  u_int offset = 0;                 /* zero-based offset counter */
+  const u_char *ch = payload;
+  
+  if (len <= 0)
+    return;
+  
+  /* data fits on one line */
+  if (len <= line_width) {
+    print_hex_ascii_line(ch, len, offset);
+    return;
+  }
+  
+  /* data spans multiple lines */
+  for ( ;; ) {
+    /* compute current line length */
+    line_len = line_width % len_rem;
+    /* print line */
+    print_hex_ascii_line(ch, line_len, offset);
+    /* compute total remaining */
+    len_rem = len_rem - line_len;
+    /* shift pointer to remaining bytes to print */
+    ch = ch + line_len;
+    /* add offset */
+    offset = offset + line_width;
+    /* check if we have line width chars or less */
+    if (len_rem <= line_width) {
+      /* print last line and get out */
+      print_hex_ascii_line(ch, len_rem, offset);
+      break;
     }
-
-    /* data spans multiple lines */
-    for ( ;; ) {
-        /* compute current line length */
-        line_len = line_width % len_rem;
-        /* print line */
-        print_hex_ascii_line(ch, line_len, offset);
-        /* compute total remaining */
-        len_rem = len_rem - line_len;
-        /* shift pointer to remaining bytes to print */
-        ch = ch + line_len;
-        /* add offset */
-        offset = offset + line_width;
-        /* check if we have line width chars or less */
-        if (len_rem <= line_width) {
-            /* print last line and get out */
-            print_hex_ascii_line(ch, len_rem, offset);
-            break;
-        }
-    }
+  }
 }
 
 void print_empty_string(char *str)
@@ -168,14 +167,20 @@ void reset_vlog(int location)
   memset(&vlog_bw[location], 0, sizeof(vLog));
 }
 
+u_long createHash(u_long ipSrc, u_int srcport, u_long ipDest, u_int dstport)
+{
+  //probably use some openssl API here?
+  return 1;
+}
+
 u_short checkIfIpLocal(u_long lIpAddr, int af_flag)
 {
   /*
    compare given address with host address and 
    if they belong to the same subnet then return true
    else return false
-  */
-   
+   */
+  
   if (((u_long)net&lIpAddr) == (u_long)net)
     return 1;
   else 
@@ -227,12 +232,12 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
 	evutil_timersub(&newtime, &lasttime, &difference);
 	elapsed = difference.tv_sec + (difference.tv_usec / 1.0e6);
   
-/*	printf("timeout_callback called at %d: %.3f seconds elapsed.\n", \
-         (int)newtime.tv_sec, elapsed); */
+  /*	printf("timeout_callback called at %d: %.3f seconds elapsed.\n", \
+   (int)newtime.tv_sec, elapsed); */
 	lasttime = newtime;
   
-/*  printf ("reset %f %f\n", newtime.tv_sec+(newtime.tv_usec/1.0e6), \
-          lasttime.tv_sec+(lasttime.tv_usec/1.0e6)); */
+  /*  printf ("reset %f %f\n", newtime.tv_sec+(newtime.tv_usec/1.0e6), \
+   lasttime.tv_sec+(lasttime.tv_usec/1.0e6)); */
   if(vlog_pkt[calc_log].time != 0)
   {
     calc_log++;
@@ -248,67 +253,67 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
     f2p = fopen (filestore_tsc, "a+");
     if(using_loopback ==1) {
       fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-           vlog_pkt[store_log].time,
-           (u_int)gettime(),
-           elapsed,
-           vlog_pkt[store_log].host,
-           vlog_bw[store_log].host,
-           vlog_pkt[store_log].host_tcp,
-           vlog_bw[store_log].host_tcp,
-           vlog_pkt[store_log].host_udp,
-           vlog_bw[store_log].host_udp,
-           vlog_pkt[store_log].host_oth,
-           vlog_bw[store_log].host_oth);
+              vlog_pkt[store_log].time,
+              (u_int)gettime(),
+              elapsed,
+              vlog_pkt[store_log].host,
+              vlog_bw[store_log].host,
+              vlog_pkt[store_log].host_tcp,
+              vlog_bw[store_log].host_tcp,
+              vlog_pkt[store_log].host_udp,
+              vlog_bw[store_log].host_udp,
+              vlog_pkt[store_log].host_oth,
+              vlog_bw[store_log].host_oth);
     }
     else {
       fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-           vlog_pkt[store_log].time,
-           (u_int)gettime(),
-           elapsed,
-           vlog_pkt[store_log].total,
-           vlog_bw[store_log].total,
-           vlog_pkt[store_log].inctr,
-           vlog_bw[store_log].inctr,
-           vlog_pkt[store_log].outtr,
-           vlog_bw[store_log].outtr,
-           vlog_pkt[store_log].xostr,
-           vlog_bw[store_log].xostr,
-           vlog_pkt[store_log].tcp,
-           vlog_bw[store_log].tcp,
-           vlog_pkt[store_log].tcp_inc,
-           vlog_bw[store_log].tcp_inc,
-           vlog_pkt[store_log].tcp_out,
-           vlog_bw[store_log].tcp_out,
-           vlog_pkt[store_log].tcp_xos,
-           vlog_bw[store_log].tcp_xos,
-           vlog_pkt[store_log].udp,
-           vlog_bw[store_log].udp,
-           vlog_pkt[store_log].udp_inc,
-           vlog_bw[store_log].udp_inc,
-           vlog_pkt[store_log].udp_out,
-           vlog_bw[store_log].udp_out,
-           vlog_pkt[store_log].udp_xos,
-           vlog_bw[store_log].udp_xos,
-           vlog_pkt[store_log].local,
-           vlog_bw[store_log].local,
-           vlog_pkt[store_log].loc_inc,
-           vlog_bw[store_log].loc_inc,
-           vlog_pkt[store_log].loc_out,
-           vlog_bw[store_log].loc_out,
-           vlog_pkt[store_log].loc_xos,
-           vlog_bw[store_log].loc_xos,
-           vlog_pkt[store_log].external,
-           vlog_bw[store_log].external,
-           vlog_pkt[store_log].ext_inc,
-           vlog_bw[store_log].ext_inc,
-           vlog_pkt[store_log].ext_out,
-           vlog_bw[store_log].ext_out,
-           vlog_pkt[store_log].ext_xos,         
-           vlog_bw[store_log].ext_xos);
+              vlog_pkt[store_log].time,
+              (u_int)gettime(),
+              elapsed,
+              vlog_pkt[store_log].total,
+              vlog_bw[store_log].total,
+              vlog_pkt[store_log].inctr,
+              vlog_bw[store_log].inctr,
+              vlog_pkt[store_log].outtr,
+              vlog_bw[store_log].outtr,
+              vlog_pkt[store_log].xostr,
+              vlog_bw[store_log].xostr,
+              vlog_pkt[store_log].tcp,
+              vlog_bw[store_log].tcp,
+              vlog_pkt[store_log].tcp_inc,
+              vlog_bw[store_log].tcp_inc,
+              vlog_pkt[store_log].tcp_out,
+              vlog_bw[store_log].tcp_out,
+              vlog_pkt[store_log].tcp_xos,
+              vlog_bw[store_log].tcp_xos,
+              vlog_pkt[store_log].udp,
+              vlog_bw[store_log].udp,
+              vlog_pkt[store_log].udp_inc,
+              vlog_bw[store_log].udp_inc,
+              vlog_pkt[store_log].udp_out,
+              vlog_bw[store_log].udp_out,
+              vlog_pkt[store_log].udp_xos,
+              vlog_bw[store_log].udp_xos,
+              vlog_pkt[store_log].local,
+              vlog_bw[store_log].local,
+              vlog_pkt[store_log].loc_inc,
+              vlog_bw[store_log].loc_inc,
+              vlog_pkt[store_log].loc_out,
+              vlog_bw[store_log].loc_out,
+              vlog_pkt[store_log].loc_xos,
+              vlog_bw[store_log].loc_xos,
+              vlog_pkt[store_log].external,
+              vlog_bw[store_log].external,
+              vlog_pkt[store_log].ext_inc,
+              vlog_bw[store_log].ext_inc,
+              vlog_pkt[store_log].ext_out,
+              vlog_bw[store_log].ext_out,
+              vlog_pkt[store_log].ext_xos,         
+              vlog_bw[store_log].ext_xos);
     }
     fclose(f2p);
 #endif
-/*  printf("timeout(): %d (%f) log c: %d s: %d\n",(int)(newtime.tv_sec+(newtime.tv_usec/1.0e6)), elapsed, calc_log, store_log);*/
+    /*  printf("timeout(): %d (%f) log c: %d s: %d\n",(int)(newtime.tv_sec+(newtime.tv_usec/1.0e6)), elapsed, calc_log, store_log);*/
   }
   
 #if !EV_PERSIST_FLAG
@@ -460,13 +465,15 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   const struct sniff_ethernet *ethernet;  /* The ethernet header */
   const struct sniff_ip *ip;              /* The IP header */
   const u_char *payload;                  /* Packet payload */
-
+  
   u_int size_ip;
   int ip_version;
   char srcIPaddr[INET_ADDRSTRLEN];
   char dstIPaddr[INET_ADDRSTRLEN];
   
   xio_flag isXIO;
+  
+  u_long jamboreeHash = 0;
   
   int isLocal=-1;
   int rtp_flag = 0;
@@ -499,11 +506,11 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   /*
    First "logical AND" both src and destination ipaddress with netmask
    if the IP address are equal then the endpoints communicating locally.
-
+   
    Possible combinations:
    If both src and destination match then local else external.
    In each categoy the comunication can be inbound/outbound/cross traffic
-  */
+   */
   isXIO = checkInboundOrOutbound(srcIPaddr, dstIPaddr);
   
   if(checkIfIpLocal((ip->ip_src).s_addr, AF_INET)==1 && checkIfIpLocal((ip->ip_dst).s_addr, AF_INET)==1){
@@ -514,7 +521,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   }
   
   size_ip_payload = ntohs(ip->ip_len);
-
+  
   switch(ip->ip_p) {
       /*
        IP IANA numbers
@@ -525,20 +532,22 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       break;
     case IPPROTO_UDP:
       size_payload = ParseUDPPacket((u_char *)ip, srcport, dstport);
+      jamboreeHash=createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
+      printf("%ld\t", jamboreeHash);
       /* TODO: Check if this is an RTP packet? */
       if(size_payload>RTP_HDR_SZ )//&& isXIO != XIO_CROSS)
       {
-        printf("%s\t%d\t%s\t%d\t%d\n", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);
+        printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);
         payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
-        rtp_flag = isRTP(payload);
+        rtp_flag = isRTP(payload, jamboreeHash);
         if (size_payload > 0 && rtp_flag) {
-        #if _DEBUG
+#if _DEBUG
           printf("Payload (%d bytes)\n", size_payload);
           print_payload(payload, size_payload);
-        #endif
+#endif
         }
       }
-      
+      printf("\n");
       break;
     case IPPROTO_ICMP:
       break;
@@ -561,19 +570,20 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   fp = fopen (filestore_pkt, "a+");
   fprintf(fp, "%d:\t%d\tv%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n", 
           pkt_count++, sec, ip_version, size_ip_payload,
-          (isLocal==1)?"LOC":"EXT", (isXIO==0)?"XOS":(isXIO==1)?"INC":"OUT",  
+          (isLocal==1)?"LOC":"EXT", 
+          (isXIO==XIO_CROSS)?"XOS":(isXIO==XIO_INCOMING)?"INC":(isXIO==XIO_OUTGOING)?"OUT":"HOST",  
           (ip->ip_p==IPPROTO_TCP)?"TCP":(ip->ip_p==IPPROTO_UDP)?(rtp_flag==0)?"UDP":(rtp_flag==1)?"RTP":"RTCP":"OTH", 
           srcport, dstport, srcIPaddr, dstIPaddr);
   fclose(fp);
 #endif
 }
 
-u_int isRTP (const u_char *packet)
+u_int isRTP (const u_char *packet, const u_long &jamboreeHash)
 {
   sniff_rtp_t *p;
   u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver;
   p = (sniff_rtp_t*) packet;
-
+  
   // Extract header information
   alt_ver = (u_int)(p->vpxcc & 0xc0);
   ver =RTP_V(p);
@@ -583,6 +593,10 @@ u_int isRTP (const u_char *packet)
   timestamp=ntohl(p->timestamp);
   ssrc=ntohl(p->ssrc);
   
+  /*
+   HASH the srcip, port, destip, port to create a unique filename
+   concat with $pt_$ssrc.txt
+   */
 #if _DEBUG 
   printf ("%d\t", ver);
   printf ("%d\t", RTP_P(p));
@@ -592,22 +606,20 @@ u_int isRTP (const u_char *packet)
   printf ("%d\t", pt);
   printf ("%d\t", seqno);
   /* 
-  	BUG: something wierd is happening with the RTP timestamps
-  	it seems to be jumping around? maybe an endian-ness problem?
-  */
+   BUG: something wierd is happening with the RTP timestamps
+   it seems to be jumping around? maybe an endian-ness problem?
+   */
   printf ("%d\t", timestamp);
   printf ("%x\n", ssrc);
 #else
   fprintf(stderr,"%f\t%d\t%d\t%d\t%d\t%x\n", gettime(), marker, pt, seqno, timestamp, ssrc);
 #endif
   
-  /*
-  HASH the srcip, port, destip, port to create a unique filename
-  or use ssrc? 
-  */
-  
   if(ver==2)
   {
+    /*
+     What other heuristic should I use to validate that the packet is RTP/RTCP
+     */
   	if(pt < 200)
       return 1; /* is RTP */
     else
@@ -622,9 +634,9 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port)
   const struct sniff_ip *ip;              /* The IP header */
   const struct sniff_udp *udp;            /* The UDP header */
   const u_char *payload;                  /* Packet payload */
-
+  
   u_int size_payload =0;
-    
+  
   ip = (struct sniff_ip*)(packet);
   udp = (struct sniff_udp*)(packet + IPHDRSIZE);
   src_port = ntohs(udp->uh_sport);
@@ -633,14 +645,14 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port)
   size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + UDPHDRSIZE);
   
   payload = (u_char *)(packet + IPHDRSIZE + UDPHDRSIZE);
-  #if _DEBUG
+#if _DEBUG
   /* define/compute udp payload (segment) offset */
   
   if (size_payload > 0) {
-	printf("Payload (%d bytes)\n", size_payload);
+    printf("Payload (%d bytes)\n", size_payload);
     print_payload(payload, size_payload);
   }    
-  #endif
+#endif
   
   /* compute udp payload (segment) size */
   
@@ -674,7 +686,7 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port)
   /* compute tcp payload (segment) size */
   size_payload = ntohs(ip->ip_len) - (IPHDRSIZE + size_tcp);
   
-  #if _DEBUG
+#if _DEBUG
   printf("id: %d\t", htons(ip->ip_id));
   printf("seq: %u\t", ntohl(tcp->th_seq));  
   printf("ack: %u\t", ntohl(tcp->th_ack));  
@@ -684,7 +696,7 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port)
     print_payload(payload, size_payload);
   }      
   showPacketDetails(ip, tcp); 
-  #endif
+#endif
   
   return size_payload;
 }
@@ -765,7 +777,7 @@ void print_interface(pcap_if_t *d)
           printf("IPv4: %s\t", iptos(a->addr, AF_INET, ip46str, sizeof(ip46str)));
         break;
         
-      /* we could enable IPv6.*/
+        /* we could enable IPv6.*/
       case AF_INET6:
         if (a->addr)
           printf("IPv6: %s\t", iptos(a->addr, AF_INET6, ip46str, sizeof(ip46str)));
@@ -789,12 +801,12 @@ void *timer_event_initialize(void *threadid)
   
 	/* EVENT: Initalize the event library */
 	base = event_base_new();
- 
+  
   /* EVENT: Initalize one event */
 #if EV_PERSIST_FLAG  /*EV_PERSIST*/
 	flags=EV_PERSIST;
 #endif
-
+  
   event_assign(&timeout, base, -1, flags, timeout_callback, (void*) &timeout); 
   
   evutil_timerclear(&tv);
@@ -833,9 +845,9 @@ int main(int argc, char **argv)
    */
   
   /* default filter expression is "IP" 
-  	BUG: filter should be dynamic size not 127. 
-  	calloc it.
-  */
+   BUG: filter should be dynamic size not 127. 
+   calloc it.
+   */
   char filter_exp[127] = "ip";
   pcap_if_t *alldevices, *device, *chosendevice;
   pcap_addr_t *a;
@@ -867,7 +879,7 @@ int main(int argc, char **argv)
   if (argc >= 2) {
     dev = argv[1];
   }
-
+  
   /* check for capture filter expression on command-line */
   if (argc == 3) {
     strncpy(filter_exp,argv[2], strlen(argv[2]));
@@ -882,10 +894,10 @@ int main(int argc, char **argv)
   if (argc == 1 ){
     /* Print the list of interfaces */
     for(device=alldevices; device; device=device->next) {
-    #if BLOCK_LOOPBACK
+#if BLOCK_LOOPBACK
       if(device->flags & PCAP_IF_LOOPBACK)
         break;
-    #endif
+#endif
       printf("%d. %s\t", ++i, device->name);
       if (device->description)
         printf("(%s)\t", device->description);
@@ -908,9 +920,9 @@ int main(int argc, char **argv)
       return -1;
     }
   }
-    
+  
   /* Iterate the link list to the chosen device 
-      based on choice or device name*/
+   based on choice or device name*/
   for(device=alldevices, j=1; device ;device=device->next, j++){
     if( (dev!=NULL && strcmp(device->name, dev)==0) || choice==j)
     {
@@ -928,12 +940,12 @@ int main(int argc, char **argv)
     {
       case AF_INET:
         if (a->addr) {
-        /*
-          address->addr
-          address->netmask
-          address->broadaddr
-          address->dstaddr
-        */
+          /*
+           address->addr
+           address->netmask
+           address->broadaddr
+           address->dstaddr
+           */
           iptos(a->addr, AF_INET, strHostIP, sizeof(strHostIP));
           hostSockAddr = a->addr;
           iptos(a->netmask, AF_INET, cmask, sizeof(strHostIP));
@@ -946,7 +958,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Error: couldn't find default device: %s\n", errbuf);
     exit(EXIT_FAILURE);
   }
-
+  
   /* get network number and mask associated with capture device*/
   if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
     fprintf(stderr, "Error: couldn't get netmask for device %s: %s\n",
@@ -1010,9 +1022,9 @@ int main(int argc, char **argv)
   /*  
    printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tProto\tSPort\t->\tDPort\tSize\t \
    Src. IP Addr\t->\tDest. IP Addr\n");
-  printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tSize\tProto\tSPort\tDPort \
-         \tSrc. IP Addr\tDest. IP Addr\n");
-  */
+   printf("No.\ttime in sec\tIPv\tLoc/Ext\tO/I/X\tSize\tProto\tSPort\tDPort \
+   \tSrc. IP Addr\tDest. IP Addr\n");
+   */
   
   /* PCAP: now we can set our callback function */
   pcap_loop(handle, CAPTURE_COUNT, got_packet, NULL);

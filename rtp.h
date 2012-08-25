@@ -34,24 +34,6 @@
  |                             ....                              |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-/*
-typedef struct
-{
-  u_int v;          
-  u_int p;          
-  u_int x;          
-  u_int cc;         
-  u_int m;          
-  u_int pt;         
-  u_short seq;        
-  u_int timestamp;  
-  u_int ssrc;       
-  u_char * payload;    
-  u_int paylen;     
-  u_char *  packet;     
-  u_int packlen;    
-} sniff_rtp_t;
- */
 
 typedef struct
 {
@@ -78,11 +60,11 @@ typedef struct
 */
 
 typedef enum {
-   RTCP_SR     = 200,
-   RTCP_RR,   
-   RTCP_SDES, 
-   RTCP_BYE,  
-   RTCP_APP   
+  RTCP_SR     = 200,
+  RTCP_RR,   
+  RTCP_SDES, 
+  RTCP_BYE,  
+  RTCP_APP   
 }e_rtcp_type;
 
 typedef struct
