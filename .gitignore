@@ -26,3 +26,4 @@ configure.in
 logs/
 node/
 *.pdf
+rtp/*.txt

@@ -145,11 +145,6 @@ void print_payload(const u_char *payload, u_int len)
   }
 }
 
-void print_empty_string(char *str)
-{
-  printf("%s\t--\t->\t--\t", str);
-}
-
 double gettime()
 {
   int errno;
@@ -473,8 +468,6 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   
   xio_flag isXIO;
   
-  u_long jamboreeHash = 0;
-  
   int isLocal=-1;
   int rtp_flag = 0;
   
@@ -532,14 +525,16 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       break;
     case IPPROTO_UDP:
       size_payload = ParseUDPPacket((u_char *)ip, srcport, dstport);
-      jamboreeHash=createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
-      printf("%ld\t", jamboreeHash);
       /* TODO: Check if this is an RTP packet? */
       if(size_payload>RTP_HDR_SZ )//&& isXIO != XIO_CROSS)
       {
-        printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);
+        /*
+         HASH the srcip, port, destip, port to create a unique filename
+         concat with $pt_$ssrc.txt     
+        createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
+        printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
         payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
-        rtp_flag = isRTP(payload, jamboreeHash);
+        rtp_flag = isRTP(payload, size_payload);
         if (size_payload > 0 && rtp_flag) {
 #if _DEBUG
           printf("Payload (%d bytes)\n", size_payload);
@@ -549,6 +544,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       }
       printf("\n");
       break;
+    /*
     case IPPROTO_ICMP:
       break;
     case IPPROTO_IP:
@@ -557,6 +553,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       break;
     case IPPROTO_PIM:
       break;  
+    */
     default:
       break;
   }
@@ -578,11 +575,13 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 #endif
 }
 
-u_int isRTP (const u_char *packet, const u_long &jamboreeHash)
+u_int isRTP (const u_char *packet, const u_int &size_payload)
 {
   sniff_rtp_t *p;
   u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver;
+  u_int filelen_rtp=0;
   p = (sniff_rtp_t*) packet;
+  char *rtpstore_pkt;
   
   // Extract header information
   alt_ver = (u_int)(p->vpxcc & 0xc0);
@@ -593,10 +592,6 @@ u_int isRTP (const u_char *packet, const u_long &jamboreeHash)
   timestamp=ntohl(p->timestamp);
   ssrc=ntohl(p->ssrc);
   
-  /*
-   HASH the srcip, port, destip, port to create a unique filename
-   concat with $pt_$ssrc.txt
-   */
 #if _DEBUG 
   printf ("%d\t", ver);
   printf ("%d\t", RTP_P(p));
@@ -611,8 +606,17 @@ u_int isRTP (const u_char *packet, const u_long &jamboreeHash)
    */
   printf ("%d\t", timestamp);
   printf ("%x\n", ssrc);
-#else
-  fprintf(stderr,"%f\t%d\t%d\t%d\t%d\t%x\n", gettime(), marker, pt, seqno, timestamp, ssrc);
+#endif
+#if FILE_STORE
+  //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
+  filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+6);
+  rtpstore_pkt = (char*) calloc(1, filelen_rtp);
+  sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, pt, ssrc);
+  printf ("filename: %s \n", rtpstore_pkt);
+  FILE *fp_rtp;
+  fp_rtp = fopen (rtpstore_pkt, "a+");  
+  fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%d\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
+  fclose(fp_rtp);
 #endif
   
   if(ver==2)
@@ -861,6 +865,8 @@ int main(int argc, char **argv)
   store_log = -1;
   using_loopback=0;
   
+  start_time=(u_int)gettime();
+  
   /* resetting the first data buffer */
   reset_vlog(calc_log);
   
@@ -975,12 +981,12 @@ int main(int argc, char **argv)
   
   
   /*Setting up files to store data in */
-  filelen1=sizeof(DIR)+sizeof(PKT_LIST)+sizeof(filter_exp)+sizeof(dev);
+  filelen1=sizeof(DIR)+sizeof(PKT_LIST)+sizeof(filter_exp)+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
   filestore_pkt = (char*) calloc(1, filelen1);
   sprintf(filestore_pkt, "%s/%s_%s_%s.txt", DIR, PKT_LIST, filter_exp, dev);
   printf ("filename: %s \n", filestore_pkt);
   
-  filelen2=sizeof(DIR)+sizeof(TIME_LIST)+sizeof(filter_exp)+sizeof(dev);
+  filelen2=sizeof(DIR)+sizeof(TIME_LIST)+sizeof(filter_exp)+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
   filestore_tsc = (char*) calloc(1, filelen2);
   sprintf(filestore_tsc, "%s/%s_%s_%s.txt", DIR, TIME_LIST, filter_exp, dev);
   printf ("filename: %s \n", filestore_tsc);

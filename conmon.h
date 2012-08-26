@@ -79,6 +79,7 @@
 #define LOG_SIZE 10    /* Size of the vLog array or map*/
 
 #define DIR "logs"
+#define RTP_DIR "rtp"
 #define PKT_LIST "pkt_list"
 #define TIME_LIST "time_list"
 
@@ -286,7 +287,7 @@ u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port);
 
 u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port);
 
-u_int isRTP (const u_char *packet, const u_long &jamboreeHash);
+u_int isRTP (const u_char *packet, const u_int &size_payload);
 
 u_long createHash(u_long ipSrc, u_int srcport, u_long ipDest, u_int dstport);
 
@@ -346,5 +347,7 @@ int using_loopback;
 /* File names to store data */
 char *filestore_pkt;
 char *filestore_tsc;
+
+u_int start_time;
 
 #endif
