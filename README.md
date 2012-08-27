@@ -1,6 +1,4 @@
 ### Synopsis 
-***
-
 ConMon is a command line utility that measures the traffic to and from an
 endpoint. ConMon passively monitors the IP packets and classifies them to 
 measure the bit rate for each of the classifiers. 
@@ -19,7 +17,8 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in `libpc
 * LEDBAT: e.g., Bittorrent
 
 ### Compiling ConMon
-The project comes with a basic Makefile and depends on the following libraries:
+The project comes with a basic Makefile (`Makefile.backup` or `Makefile.ubuntu`) 
+and depends on the following libraries:
 * [libpcap](http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz)
 * [libevent](https://github.com/downloads/libevent/libevent/libevent-2.0.19-stable.tar.gz)
 * [pthreads]
@@ -28,7 +27,8 @@ ConMon has two threads:
 1. Main Thread: captures packets based on `filter expression` and store packets to "Packet Logs".
 2. Event Thread: times out every `1s` and stores the {num_pkts, bytes} per classifier to the "Time Logs".
 
-Alternatively, to use autotools execute the following steps 
+Alternatively, generate the Makefile using autotools, for which execute 
+the following steps:
 ```
 $ ./autogen.sh
 $ ./configure
@@ -43,7 +43,7 @@ control of their data. If we implement a backend service to capture the
 logs, we will then add a method to obfuscate the user's IP addresses to
 preserve their privacy. ConMon
 [currently](https://github.com/vr000m/conmon/tree/v0.2.1) creates two files
-in `logs/`
+in `logs/` folder
 * Packet Logs: `pkt_list_$filter_$interface.txt` (e.g.: pkt_list_ip_en1.txt)
 * Time Logs: `time_list_$filter_$interface.txt` (e.g.: time_list_ip_en1.txt)
 
@@ -60,8 +60,8 @@ Options:
 ```
 
 
-* Running without any parameters sets default PCAP filter="ip" and shows a menu to choose interfaces.
-For example:
+* Running without any parameters sets default PCAP filter="ip" and 
+shows a menu to choose interfaces. For example:
 
 ```
 $ sudo ./conmon
@@ -150,8 +150,8 @@ $ source rtp_bitrate.sh rtp_1345972446_96_aaaabbbb
   needed currently, as data is stored locally!]
 * Test RTP, RTCP, RTCP-mux, A/V-mux, etc.
 * Use some heuristics to reduce false-positives in RTP detection.
-* create an API so that applications can query the bit rate for a specific
-  classifier
+* use DBUS(http://www.freedesktop.org/wiki/Software/dbus) 
+  so that applications can query the bit rate for a specific classifier
 * convert or allow ConMon to run as a daemon
 * There may be bugs related to IPv6 in some places. ConMon is a fork from
   my earlier project [Snapper](https://github.com/vr000m/Snapper)
