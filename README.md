@@ -28,6 +28,13 @@ ConMon has two threads:
 1. Main Thread: captures packets based on `filter expression` and store packets to "Packet Logs".
 2. Event Thread: times out every `1s` and stores the {num_pkts, bytes} per classifier to the "Time Logs".
 
+Alternatively, to use autotools execute the following steps 
+```
+$ ./autogen.sh
+$ ./configure
+$ make
+```
+
 ### Running ConMon
 ConMon requires root privileges to capture packets. Until [ConMon
 v0.2.1](https://github.com/vr000m/conmon/tree/v0.2.1) the captured packets
@@ -117,12 +124,32 @@ A bit about the graph:
 > plots,the magnitude of the spikes are different) this is due to the rate-control algorithm 
 > at the the two ends.
 
-### TODO
+### RTP media stream detection and measuring throughput
+
+`isRTP (const u_char *packet, ...)` in `conmon.cc` detects RTP and
+the RTP and RTCP headers are defined in `rtp.h`. Currently, ConMon is only
+tested for RTP but should also work for RTCP. However, it should be noted
+that the current implementation produces many false positives because ConMon
+does not implement any RTP header validation mechanisms. Upon detection 
+each RTP packet is appended to the appropriate RTP logs file. The log 
+files are stored in the `rtp/` folder and are of the form 
+`rtp_*_$pt_$ssrc.txt`
+
+To generate graphs per RTP media stream execute the `rtp_bitrate.sh` 
+with the appropriate RTP log file as a command line parameter.
+For example:
+```
+$ source rtp_bitrate.sh rtp_1345972446_96_aaaabbbb
+```
+
+### ConMon TODO
 * create above classifiers [done]
 * create vectors/map of {num_pkts, bytes} for each of the above classifiers [done]
 * create plots to show changes in bit rate for the above classifiers [done]
 * If data is uploaded then hash the source/destination IP addresses. [not
   needed currently, as data is stored locally!]
+* Test RTP, RTCP, RTCP-mux, A/V-mux, etc.
+* Use some heuristics to reduce false-positives in RTP detection.
 * create an API so that applications can query the bit rate for a specific
   classifier
 * convert or allow ConMon to run as a daemon
