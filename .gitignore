@@ -23,7 +23,8 @@ conmon.c~
 autogen.sh
 aclocal.m4
 configure.in
-logs/
+logs/*.txt
+logs/*.pdf
 node/
 *.pdf
 rtp/*.txt

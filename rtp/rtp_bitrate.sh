@@ -19,6 +19,6 @@ set grid
 set style fill pattern 5
 set xtics border out scale 0,0 mirror rotate by -45  offset character 0, 0, 0
 
-plot "$1_bitrate.txt" using 1:2 title "RTP" with linespoints lw 2 lt -1 pi 30 pt 6 ps 1.5 lc -1
+plot "$1_bitrate.txt" using 1:2 title "RTP" with linespoints lw 3 lt -1 pi 30 pt 6 ps 1.5 lc -1
 EOF
 rm $1_bitrate.txt
