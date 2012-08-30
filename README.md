@@ -73,7 +73,9 @@ $ sudo ./conmon
 Enter the interface number (1-4):
 ```
 
-* If you do not want the choose the network interface every time then pass it as a command-line argument. You can use `ifconfig` to lookup the interfaces.
+* If you do not want the choose the network interface every time then pass
+  it as a command-line argument. You can use `ifconfig` to lookup the
+  interfaces.
 
 For example:
 
@@ -117,41 +119,30 @@ of the **UDP traffic** is shown below:
 ![Example ConMon plot](http://www.netlab.tkk.fi/~varun/share_pub/time_list_udp-0.png)
 
 A bit about the graph:
-> The first spike (upto 10 Mbps) is caused by Bittorrent. I downloaded ~300MB torrent.
-> The second cluster of spikes is caused by Skype. I initially started with
-> an audio call and later upgraded to video, therefore, we observe larger spikes
-> You may notice that it is a bit assymetric (compare the `incoming` and `outgoing` throughput
-> plots,the magnitude of the spikes are different) this is due to the rate-control algorithm 
-> at the the two ends.
+> The first spike (upto 10 Mbps) is caused by Bittorrent. I downloaded
+> ~300MB torrent. The second cluster of spikes is caused by Skype. I
+> initially started with an audio call and later upgraded to video,
+> therefore, we observe larger spikes. You may notice that the plots are a
+> bit asymmetric (compare the `incoming` and `outgoing` throughput
+> plots,the magnitude of the spikes are different) this is due to the
+> rate-control algorithm at the the two ends.
 
 ### RTP media stream detection and measuring throughput
 
-`isRTP (const u_char *packet, ...)` in `conmon.cc` detects RTP and
-the RTP and RTCP headers are defined in `rtp.h`. Currently, ConMon is only
-tested for RTP but should also work for RTCP. However, it should be noted
-that the current implementation produces many false positives because ConMon
-does not implement any RTP header validation mechanisms. Upon detection 
-each RTP packet is appended to the appropriate RTP logs file. The log 
-files are stored in the `rtp/` folder and are of the form 
-`rtp_*_$pt_$ssrc.txt`
-
-To generate graphs per RTP media stream execute the `rtp_bitrate.sh` 
-with the appropriate RTP log file as a command line parameter.
-For example:
-```
-$ source rtp_bitrate.sh rtp_1345972446_96_aaaabbbb
-```
+Instructions in 
+[rtp/README.md](https://github.com/vr000m/ConMon/blob/master/rtp/README.md)
 
 ### ConMon TODO
 * create above classifiers [done]
-* create vectors/map of {num_pkts, bytes} for each of the above classifiers [done]
+* create vectors/map of {num_pkts, bytes} for each of the above classifiers
+  [done]
 * create plots to show changes in bit rate for the above classifiers [done]
 * If data is uploaded then hash the source/destination IP addresses. [not
   needed currently, as data is stored locally!]
 * Test RTP, RTCP, RTCP-mux, A/V-mux, etc.
 * Use some heuristics to reduce false-positives in RTP detection.
-* use DBUS(http://www.freedesktop.org/wiki/Software/dbus) 
-  so that applications can query the bit rate for a specific classifier
+* use [DBUS](http://www.freedesktop.org/wiki/Software/dbus) so that
+  applications can query the bit rate for a specific classifier
 * convert or allow ConMon to run as a daemon
 * There may be bugs related to IPv6 in some places. ConMon is a fork from
   my earlier project [Snapper](https://github.com/vr000m/Snapper)
