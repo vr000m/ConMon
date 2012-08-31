@@ -15,16 +15,33 @@ config.*
 /missing
 /.deps
 
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
 # conmon specific
-conmon.o
 conmon
-.DS_Store
-conmon.c~
-autogen.sh
+*.c~
 aclocal.m4
 configure.in
+
+# conmon specific
+.DS_Store
 logs/*.txt
-logs/*.pdf
 node/
 *.pdf
 rtp/*.txt
