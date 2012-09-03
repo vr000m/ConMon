@@ -72,7 +72,7 @@
 
 /* INET_ADDRSTRLEN is 16 */
 
-#define BLOCK_LOOPBACK 0
+#define BLOCK_LOOPBACK 1
 
 #define CAPTURE_COUNT -1           /* number of packets to capture, -1: non-stop */
 
@@ -347,6 +347,7 @@ int using_loopback;
 /* File names to store data */
 char *filestore_pkt;
 char *filestore_tsc;
+char *filter_exp;
 
 u_int start_time;
 
