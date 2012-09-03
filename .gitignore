@@ -45,3 +45,5 @@ logs/*.txt
 node/
 *.pdf
 rtp/*.txt
+
+plots/conmon-skitch.txt
