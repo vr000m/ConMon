@@ -34,11 +34,19 @@ void signal_handler(int signal)
   /* cleanup */
   pcap_freecode(&fp);
   pcap_close(handle);
+  
+  /*freeing allocated memory */
+  free(filter_exp);
   free(filestore_pkt);
   free(filestore_tsc);
+  
 #if EV_PERSIST_FLAG
   /*BUG: remove event*/
 #endif
+  
+  /*kill thread*/
+  pthread_exit(NULL);
+  
   exit(0);
 }
 
@@ -865,16 +873,11 @@ int main(int argc, char **argv)
    * (tcp[13] == 0x10) for only ACK packets
    */
   
-  /* default filter expression is "IP" 
-   BUG: filter should be dynamic size not 127. 
-   calloc it.
-   */
-  char filter_exp[127] = "ip";
   pcap_if_t *alldevices, *device, *chosendevice;
   pcap_addr_t *a;
   int i =0, j=0;
   int choice=-1;
-  u_int filelen1=0, filelen2=0;
+  u_int filelen1=0, filelen2=0, cap_filter_len=0;
   
   /* setting global variables */
   pkt_count = 1;
@@ -904,9 +907,18 @@ int main(int argc, char **argv)
   }
   
   /* check for capture filter expression on command-line */
-  if (argc == 3) {
-    strncpy(filter_exp,argv[2], strlen(argv[2]));
+  if (argc >= 3) {
+	cap_filter_len=strlen(argv[2]);
+	filter_exp = (char*) calloc(1, cap_filter_len);
+    strncpy(filter_exp,argv[2], cap_filter_len);
   }
+  else {
+	cap_filter_len=sizeof("ip");
+	filter_exp = (char*) calloc(1, cap_filter_len);
+	strncpy(filter_exp,"ip", cap_filter_len);
+	    
+  }
+  
   
   /* find all interfaces, en0, en1, eth0, p2p0, lo, ..., etc. */
   if (pcap_findalldevs(&alldevices, errbuf) == -1) {
@@ -994,16 +1006,16 @@ int main(int argc, char **argv)
   printf("Device: %s\t", dev);
   
   /*printf("Number of packets: %d\n", CAPTURE_COUNT);*/
-  printf("Filter expression: %s\n", filter_exp);
+  printf("Filter expression (%d): %s\n", cap_filter_len, filter_exp);
   
   
   /*Setting up files to store data in */
-  filelen1=sizeof(DIR)+sizeof(PKT_LIST)+sizeof(filter_exp)+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
+  filelen1=sizeof(DIR)+sizeof(PKT_LIST)+cap_filter_len+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
   filestore_pkt = (char*) calloc(1, filelen1);
   sprintf(filestore_pkt, "%s/%s_%s_%s.txt", DIR, PKT_LIST, filter_exp, dev);
   printf ("filename: %s \n", filestore_pkt);
   
-  filelen2=sizeof(DIR)+sizeof(TIME_LIST)+sizeof(filter_exp)+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
+  filelen2=sizeof(DIR)+sizeof(TIME_LIST)+cap_filter_len+sizeof(dev)+sizeof(char)*7;//7 for special chars+ txt
   filestore_tsc = (char*) calloc(1, filelen2);
   sprintf(filestore_tsc, "%s/%s_%s_%s.txt", DIR, TIME_LIST, filter_exp, dev);
   printf ("filename: %s \n", filestore_tsc);
@@ -1054,7 +1066,7 @@ int main(int argc, char **argv)
   printf("\nCapture complete.\n");
   
   /*kill thread*/
-  pthread_exit(NULL);
+  //pthread_exit(NULL);
   return 0;
 }
 
