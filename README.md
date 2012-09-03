@@ -66,16 +66,16 @@ shows a menu to choose interfaces. For example:
 ```
 $ sudo ./conmon
 
-1. en0  (No Desc.)    
-2. fw0	(No Desc.)	
-3. en1	(No Desc.)	IPv6: fe80::xx:xx:xx:xx%en1	IPv4: xx.xx.xx.xx	
-4. p2p0	(No Desc.)	
+1. en0  (No Desc.)      IPv6: fe80::*%en0     IPv4: xx.xx.xx.xx   
+2. fw0  (No Desc.)      
+3. en1  (No Desc.)      IPv6: fe80::*%en1     IPv4: yy.yy.yy.yy    
+4. p2p0 (No Desc.)      
 Enter the interface number (1-4):
 ```
 
 * If you do not want the choose the network interface every time then pass
   it as a command-line argument. You can use `ifconfig` to lookup the
-  interfaces.
+  interface names.
 
 For example:
 
@@ -90,36 +90,20 @@ For example:
 ```
 $ sudo ./conmon en1 tcp
 IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1	Filter expression: tcp
+
+$ sudo ./conmon eth0 "udp port 40500"
+IP ADDR: 172.16.183.221	MASK: 255.255.255.0	Device: eth0	Filter expression (14): udp port 40500
+filename: logs/pkt_list_udp port 40500_eth0.txt created
+filename: logs/time_list_udp port 40500_eth0.txt created
+filename: rtp/rtp_1346675553_97_ccccdddd.txt created
+filename: rtp/rtp_1346675553_96_aaaabbbb.txt created
 ```
 
-### Output
+### Example Output
+For instructions on plotting read
+[plots/README.md](https://github.com/vr000m/ConMon/blob/master/plots/README.md)
 
-In the `plots/` folder there are two scripts (`plots.sh` and
-`plot-loopback.sh`) to generate the plots based on the "Time Logs" (e.g.:
-time_list_ip_en1.txt). The `plot-loopback.sh` is used only when monitoring
-packet flows on the `local interface (lo)`. We use
-[Gnuplot](http://gnuplot.sourceforge.net/demo_cvs/) to generate the [PDF
-plots](http://www.gnuplot.info/docs_4.6/gnuplot.pdf) (See Pg. 174 for list
-of `terminal` options).
-
-
-To plot the data, the above shell scripts take the filename of the "time
-logs" (without the file extension) as a command-line argument. For example:
-
-```
-$./plots.sh time_list_ip_en1
-# will generate the following files
-time_list_ip_en1_total.pdf
-time_list_ip_en1_tcp.pdf
-time_list_ip_en1_udp.pdf
-time_list_ip_en1_local.pdf
-time_list_ip_en1_external.pdf
-```
-
-Each graph is a
-`multiplot`(http://gnuplot.sourceforge.net/demo_cvs/multiplt.html) that
-shows the combined, incoming, outgoing and cross-traffic. An Example plot
-of the **UDP traffic** is shown below: 
+An Example plot of the **UDP traffic** is shown below: 
 ![Example ConMon plot](http://www.netlab.tkk.fi/~varun/share_pub/time_list_udp-0.png)
 
 A bit about the graph:

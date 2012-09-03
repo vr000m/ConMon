@@ -20,3 +20,22 @@ The resulting file is tab-separated and contains the following columns:
 ```
 unix_time payload_type SSRC seqno timestamp marker size_payload
 ```
+
+### Example scripts for sending and receiving RTP (Gstreamer)
+
+* `video_streamer.sh` streams two `.mp4` files. The command-line is:
+  `./video_streamer.sh $ip_addr $port1 $port2`
+* `video_receiver.sh` decodes the two media streams. command-line is:
+  `./video_receiver.sh $port1 $port2`
+* Also note that the decoder requires the `sprop-parameter-sets` to
+  playback the files properly. 
+  Example:
+  ```
+  /GstPipeline:pipeline0/GstRtpH264Pay:rtph264pay0.GstPad:src: 
+  caps = application/x-rtp, media=(string)video, clock-rate=(int)90000,
+  encoding-name=(string)H264,
+  sprop-parameter-sets=(string)\"Z2QAHqw05gLQ9v/ACAAGxAAAAwAEAAADAKA8WLZo\\,aOl4RLIs\",
+  payload=(int)96, ssrc=(guint)2863315899, clock-base=(guint)0,
+  seqnum-base=(guint)0
+  ```
+
