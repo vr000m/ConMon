@@ -3,16 +3,19 @@ ConMon is a command line utility that measures the traffic to and from an
 endpoint. ConMon passively monitors the IP packets and classifies them to 
 measure the bit rate for each of the classifiers. 
 
-It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in `libpcap (tcpdump)`.
+It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
+`libpcap (tcpdump)`.
 
 ### Current classifiers:
-* Total, TCP, UDP, local, external [done] 
-* Each is further classified as combined, inbound, outbound and background [done]
+* Total, TCP, UDP, local, external [done]
+* Each is further classified as combined, inbound, outbound and background
+  [done]
+* Additionally: can detect RTP/UDP (if no hint is available on which port
+  the RTP is received then there are still some false-positives).
 
 #### Extras (yet to be implemented)
 * IPv4 and IPv6
-* Multimedia Transport: RTP (for RTCWEB, MPRTP, RTSP, etc.)
-* Multimedia Signaling: STUN, ICE packets
+* STUN packets
 * HTTP(S): port 80 and 443
 * LEDBAT: e.g., Bittorrent
 
@@ -81,7 +84,7 @@ For example:
 
 ```
 $ sudo ./conmon en1
-IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0	Device: en1	Filter expression: ip
+IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0   Device: en1 Filter expression: ip
 ```
 
 * You may use an alternate [PCAP filter](http://wiki.wireshark.org/CaptureFilters). 
@@ -89,20 +92,36 @@ For example:
 
 ```
 $ sudo ./conmon en1 tcp
-IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1	Filter expression: tcp
+IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1  Filter expression: tcp
+```
 
+* If you know which ports the RTP is received on/sent from, for example:
+
+```
 $ sudo ./conmon eth0 "udp port 40500"
-IP ADDR: 172.16.183.221	MASK: 255.255.255.0	Device: eth0	Filter expression (14): udp port 40500
+IP ADDR: 172.16.183.221 MASK: 255.255.255.0 Device: eth0    Filter expression (14): udp port 40500
 filename: logs/pkt_list_udp port 40500_eth0.txt created
 filename: logs/time_list_udp port 40500_eth0.txt created
 filename: rtp/rtp_1346675553_97_ccccdddd.txt created
 filename: rtp/rtp_1346675553_96_aaaabbbb.txt created
-```
 
-### Example Output
+[Once complete, to plot run]
+$ cd plots/
+$ ./plots.sh ./plots.sh "time_list_udp port 40500_eth0"
+[for generating RTP specific plots do]
+$ cd rtp/
+$ ./rtp_bitrate.sh rtp_1346675553_97_ccccdddd
+$ ./rtp_bitrate.sh rtp_1346675553_96_aaaabbbb
+[Note: that .txt extensions are intentionally skipped!
+```
+More RTP related instructions are available at
+[rtp/README.md](https://github.com/vr000m/ConMon/blob/master/rtp/README.md)
+
+### Output
 For instructions on plotting read
 [plots/README.md](https://github.com/vr000m/ConMon/blob/master/plots/README.md)
 
+#### Example Output
 An Example plot of the **UDP traffic** is shown below: 
 ![Example ConMon plot](http://www.netlab.tkk.fi/~varun/share_pub/time_list_udp-0.png)
 
@@ -114,11 +133,6 @@ A bit about the graph:
 > bit asymmetric (compare the `incoming` and `outgoing` throughput
 > plots,the magnitude of the spikes are different) this is due to the
 > rate-control algorithm at the the two ends.
-
-### RTP media stream detection and measuring throughput
-
-Instructions in 
-[rtp/README.md](https://github.com/vr000m/ConMon/blob/master/rtp/README.md)
 
 ### ConMon TODO
 * create above classifiers [done]
