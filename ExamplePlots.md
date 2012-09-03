@@ -1,5 +1,5 @@
 An Example plot of the **UDP traffic** is shown below: 
-![Example ConMon plot](https://github.com/vr000m/ConMon/blob/master/plots/Example%20Plots/2_bittorrent_skype_rw.png)
+![Example ConMon plot](https://raw.github.com/vr000m/ConMon/master/plots/Example%20Plots/2_bittorrent_skype_rw.png)
 
 A bit about the graph:
 > The first spike (upto 10 Mbps) is caused by Bittorrent. I downloaded
