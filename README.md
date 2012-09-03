@@ -121,8 +121,8 @@ More RTP related instructions are available at
 For instructions on plotting read
 [plots/README.md](https://github.com/vr000m/ConMon/blob/master/plots/README.md)
 
-#### Example Output
-Read more about some of the plots in [ExamplePlots.md](https://github.com/vr000m/ConMon/blob/master/ExamplePlots.md)
+#### Example Results
+Read more about sample results in the [Wiki](https://github.com/vr000m/ConMon/wiki/Example-Results)
 
 ### ConMon TODO
 * create above classifiers [done]
