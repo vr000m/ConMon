@@ -1,8 +1,12 @@
 #! /bin/sh
 ./perinst.awk $1.txt > $1_bitrate.txt
+
+# removing first line from bitrate.txt
 mv $1_bitrate.txt $1_bitrate.tmp
 sed 1d $1_bitrate.tmp > $1_bitrate.txt
 rm $1_bitrate.tmp
+
+#plotting bitrate.txt using gnuplot
 gnuplot << EOF
 name=system("echo $1") 
 time=system("date +%Y%m%d_%H%M%S")
