@@ -350,5 +350,6 @@ char *filestore_tsc;
 char *filter_exp;
 
 u_int start_time;
+u_int allow_rtp;
 
 #endif

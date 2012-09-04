@@ -58,6 +58,7 @@ void print_app_usage(void)
   printf("Options:\n");
   printf("    interface     Listen on <interface> for packets.\n");
   printf("    filter        PCAP Filter to apply on packets.\n");
+  printf("    -rtp          enable RTP detection [experimental], always add at the end\n");
   printf("\n");
   
   return;
@@ -540,19 +541,22 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     case IPPROTO_UDP:
       size_payload = ParseUDPPacket((u_char *)ip, srcport, dstport);
       /* TODO: Check if this is an RTP packet? */
-      if(size_payload>RTP_HDR_SZ )//&& isXIO != XIO_CROSS)
-      {
-        /*
-         HASH the srcip, port, destip, port to create a unique filename
-         concat with $pt_$ssrc.txt     
-        createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
-        printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
-        payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
-        rtp_flag = isRTP(payload, size_payload);
-        if (size_payload > 0 && rtp_flag) {
+      if(allow_rtp) {
+        if(size_payload>RTP_HDR_SZ )//&& isXIO != XIO_CROSS)
+        {
+          /*
+           HASH the srcip, port, destip, port to create a unique filename
+           concat with $pt_$ssrc.txt     
+          createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
+          printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
+
+          payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
+          rtp_flag = isRTP(payload, size_payload);
 #if _DEBUG
-          printf("Payload (%d bytes)\n", size_payload);
-          print_payload(payload, size_payload);
+          if (size_payload > 0 && rtp_flag) {
+            printf("Payload (%d bytes)\n", size_payload);
+            print_payload(payload, size_payload);
+          }
 #endif
         }
       }
@@ -878,12 +882,14 @@ int main(int argc, char **argv)
   int i =0, j=0;
   int choice=-1;
   u_int filelen1=0, filelen2=0, cap_filter_len=0;
+  u_int args=argc;
   
   /* setting global variables */
   pkt_count = 1;
   calc_log = 0;
   store_log = -1;
   using_loopback=0;
+  allow_rtp=0;
   
   start_time=(u_int)gettime();
   
@@ -895,38 +901,58 @@ int main(int argc, char **argv)
   
   print_app_banner();
   
-  if (argc > 3 ) {
+  /* HACK/BUG: always put -rtp at the end of the command not earlier */
+    
+  for (i=0; i<argc; i++)
+  {
+    j=strncmp(argv[i],"-rtp", strlen("-rtp"));
+    if (j==0){
+      allow_rtp=1;
+      args--;
+    }
+  }
+
+  if(allow_rtp){
+    printf("found -rtp\n");
+  }
+  else {
+    printf("-rtp not found\n");
+  }
+
+  /*reseting the values*/
+  i=0, j=0;
+
+  
+  if (args > 3 ) {
     fprintf(stderr, "Error: unrecognized command-line options\n\n");
     print_app_usage();
     exit(EXIT_FAILURE);
   }
   
   /* check for capture device name on command-line */
-  if (argc >= 2) {
+  if (args >= 2) {
     dev = argv[1];
   }
   
   /* check for capture filter expression on command-line */
-  if (argc >= 3) {
-	cap_filter_len=strlen(argv[2]);
-	filter_exp = (char*) calloc(1, cap_filter_len);
+  if (args >= 3) {
+    cap_filter_len=strlen(argv[2]);
+    filter_exp = (char*) calloc(1, cap_filter_len);
     strncpy(filter_exp,argv[2], cap_filter_len);
   }
   else {
-	cap_filter_len=sizeof("ip");
-	filter_exp = (char*) calloc(1, cap_filter_len);
-	strncpy(filter_exp,"ip", cap_filter_len);
-	    
+    cap_filter_len=strlen("ip");
+    filter_exp = (char*) calloc(1, cap_filter_len);
+    strncpy(filter_exp,"ip", cap_filter_len);	    
   }
-  
-  
+    
   /* find all interfaces, en0, en1, eth0, p2p0, lo, ..., etc. */
   if (pcap_findalldevs(&alldevices, errbuf) == -1) {
     fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
     exit(1);
   }
   
-  if (argc == 1 ){
+  if (args == 1 ){
     /* Print the list of interfaces */
     for(device=alldevices; device; device=device->next) {
 #if BLOCK_LOOPBACK
