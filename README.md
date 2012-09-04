@@ -98,7 +98,7 @@ IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1  Filter expression: tcp
 * If you know which ports the RTP is received on/sent from, for example:
 
 ```
-$ sudo ./conmon eth0 "udp port 40500"
+$ sudo ./conmon eth0 "udp port 40500" -rtp
 IP ADDR: 172.16.183.221 MASK: 255.255.255.0 Device: eth0    Filter expression (14): udp port 40500
 filename: logs/pkt_list_udp port 40500_eth0.txt created
 filename: logs/time_list_udp port 40500_eth0.txt created

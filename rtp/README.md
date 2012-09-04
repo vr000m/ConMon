@@ -30,12 +30,11 @@ unix_time payload_type SSRC seqno timestamp marker size_payload
 * Also note that the decoder requires the `sprop-parameter-sets` to
   playback the files properly. 
   Example:
-  ```
-  /GstPipeline:pipeline0/GstRtpH264Pay:rtph264pay0.GstPad:src: 
-  caps = application/x-rtp, media=(string)video, clock-rate=(int)90000,
-  encoding-name=(string)H264,
-  sprop-parameter-sets=(string)\"Z2QAHqw05gLQ9v/ACAAGxAAAAwAEAAADAKA8WLZo\\,aOl4RLIs\",
-  payload=(int)96, ssrc=(guint)2863315899, clock-base=(guint)0,
-  seqnum-base=(guint)0
-  ```
+
+>  /GstPipeline:pipeline0/GstRtpH264Pay:rtph264pay0.GstPad:src: 
+>  caps = application/x-rtp, media=(string)video, clock-rate=(int)90000,
+>  encoding-name=(string)H264,
+>  sprop-parameter-sets=(string)\"Z2QAHqw05gLQ9v/ACAAGxAAAAwAEAAADAKA8WLZo\\,aOl4RLIs\",
+>  payload=(int)96, ssrc=(guint)2863315899, clock-base=(guint)0,
+>  seqnum-base=(guint)0
 
