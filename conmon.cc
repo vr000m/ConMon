@@ -902,7 +902,6 @@ int main(int argc, char **argv)
   print_app_banner();
   
   /* HACK/BUG: always put -rtp at the end of the command not earlier */
-    
   for (i=0; i<argc; i++)
   {
     j=strncmp(argv[i],"-rtp", strlen("-rtp"));
@@ -912,12 +911,12 @@ int main(int argc, char **argv)
     }
   }
 
-  if(allow_rtp){
-    printf("found -rtp\n");
-  }
-  else {
-    printf("-rtp not found\n");
-  }
+//  if(allow_rtp){
+//    printf("found -rtp\n");
+//  }
+//  else {
+//    printf("-rtp not found\n");
+//  }
 
   /*reseting the values*/
   i=0, j=0;
