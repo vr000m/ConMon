@@ -22,12 +22,13 @@ The columns are:
 The columns are:
 > 1. time_current 
 > 2. time_at_monitor 
-> 3. elapsed 
-> 4-11. ALL(pkt_count, bw) 
-> 12-19. TCP(pkt_count, bw)
-> 20-27. UDP(pkt_count, bw) 
-> 28-35. LOCAL(pkt_count, bw) 
-> 36-43. EXTERNAL(pkt_count, bw)
+> 3. elapsed <br/>
+
+> 4-11. ALL(pkt_count, bw) <br/>
+> 12-19. TCP(pkt_count, bw) <br/>
+> 20-27. UDP(pkt_count, bw) <br/>
+> 28-35. LOCAL(pkt_count, bw) <br/>
+> 36-43. EXTERNAL(pkt_count, bw) <br/>
 
 
 Each FUNC(pkt_count, bw) creates two columns for pkt_count and throughput
