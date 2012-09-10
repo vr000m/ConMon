@@ -59,7 +59,7 @@ void signal_handler(int signal)
 void print_app_usage(void)
 {
   
-  printf("Usage: %s [interface] [filter]\n", APP_NAME);
+  printf("Usage: sudo ./%s [interface] [filter] [experimental flag]\n", APP_NAME);
   printf("\n");
   printf("Options:\n");
   printf("    interface     Listen on <interface> for packets.\n");
@@ -945,7 +945,7 @@ int main(int argc, char **argv)
       args--;
     }
     if (strncmp(argv[i],"-h", strlen("-h"))==0){
-      fprintf(stderr, "Error: unrecognized command-line options\n\n");
+      fprintf(stderr, "Showing help for ConMon\n\n");
       print_app_usage();
       exit(EXIT_FAILURE);
     }

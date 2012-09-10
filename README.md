@@ -40,13 +40,13 @@ $ make
 
 ### Running ConMon
 ConMon requires root privileges to capture packets. Until [ConMon
-v0.2.1](https://github.com/vr000m/conmon/tree/v0.2.1) the captured packets
+v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2) the captured packets
 are stored locally (in files at `logs/`) and therefore the "user" has full
 control of their data. If we implement a backend service to capture the
 logs, we will then add a method to obfuscate the user's IP addresses to
-preserve their privacy. ConMon
-[currently](https://github.com/vr000m/conmon/tree/v0.2.1) creates two files
-in `logs/` folder
+preserve their privacy. 
+
+ConMon creates two files in `logs/` folder
 * Packet Logs: `pkt_list_$filter_$interface.txt` (e.g.: pkt_list_ip_en1.txt)
 * Time Logs: `time_list_$filter_$interface.txt` (e.g.: time_list_ip_en1.txt)
 
@@ -55,11 +55,14 @@ in `logs/` folder
 
 ```
 $./conmon --help
-Usage: conmon [interface] [filter]
-
+Usage: sudo ./conmon [interface] [filter] [experimental flag]
 Options:
     interface     Listen on <interface> for packets.
     filter        PCAP Filter to apply on packets.
+
+    [only one experimental flag allowed at the end]
+    --rtp         enable RTP detection
+    --http        enable HTTP detection
 ```
 
 
@@ -98,7 +101,7 @@ IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1  Filter expression: tcp
 * If you know which ports the RTP is received on/sent from, for example:
 
 ```
-$ sudo ./conmon eth0 "udp port 40500" -rtp
+$ sudo ./conmon eth0 "udp port 40500" --rtp
 IP ADDR: xx.xx.xx.xx MASK: 255.255.255.0 Device: eth0    Filter expression (14): udp port 40500
 filename: logs/pkt_list_udp port 40500_eth0.txt created
 filename: logs/time_list_udp port 40500_eth0.txt created
@@ -116,6 +119,9 @@ $ ./rtp_bitrate.sh rtp_1346675553_96_aaaabbbb
 ```
 More RTP related instructions are available at
 [rtp/README.md](https://github.com/vr000m/ConMon/blob/master/rtp/README.md)
+
+**NOTE**: as of version [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2) 
+-rtp is replaced by --rtp
 
 ### Output
 For instructions on plotting read
