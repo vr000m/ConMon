@@ -618,9 +618,9 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 
 void ParseHTTPPacket(const u_char *packet, const u_int &size_payload)
 {
-#if _DEBUG 
+#if 1//_DEBUG 
   printf("Payload (%d bytes)\n", size_payload);
-  print_payload(payload, size_payload);
+  print_payload(packet, size_payload);
 #endif
 }
 
