@@ -305,6 +305,8 @@ void update_vlog_lo(u_int sec, int location, u_char proto, u_int isLocal, u_int 
 
 void reset_vlog(int location);
 
+void cleanup();
+
 /* EVENT: */
 void *timer_event_initialize(void *threadid);
 
@@ -315,7 +317,7 @@ struct event_base *base;        /* to initialize eventing */
 
 
 /* PCAP: */
-struct bpf_program fp;          /* compiled filter program (expression) */
+struct bpf_program filter_prog;          /* compiled filter program (expression) */
 
 /* dot notation of the host address*/
 char strHostIP[INET_ADDRSTRLEN];

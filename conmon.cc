@@ -29,24 +29,30 @@ void print_app_banner(void)
   return;
 }
 
-void signal_handler(int signal)
+void cleanup()
 {
   /* cleanup */
-  pcap_freecode(&fp);
-  pcap_close(handle);
+  pcap_freecode(&filter_prog);
+  
+  if(handle!=NULL)
+    pcap_close(handle);
   
   /*freeing allocated memory */
-  free(filter_exp);
-  free(filestore_pkt);
-  free(filestore_tsc);
+  if(filter_exp!=NULL)
+    free(filter_exp);
+  if(filestore_pkt!=NULL)
+    free(filestore_pkt);
+  if(filestore_tsc!=NULL)
+    free(filestore_tsc);  
+}
+
+void signal_handler(int signal)
+{
+  cleanup();
   
 #if EV_PERSIST_FLAG
   /*BUG: remove event*/
 #endif
-  
-  /*kill thread*/
-  pthread_exit(NULL);
-  
   exit(0);
 }
 
@@ -257,10 +263,12 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
 #if FILE_STORE
     FILE *f2p;
     f2p = fopen (filestore_tsc, "a+");
+
     if(f2p==NULL){
   	  perror("Unable to open filestore_tsc \n");
   	  exit(1);
     }
+    
     if(using_loopback ==1) {
       fprintf(f2p, "%d\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
               vlog_pkt[store_log].time,
@@ -321,6 +329,7 @@ void timeout_callback(evutil_socket_t fd, short event, void *arg)
               vlog_pkt[store_log].ext_xos,         
               vlog_bw[store_log].ext_xos);
     }
+
     fclose(f2p);
 #endif
     /*  printf("timeout(): %d (%f) log c: %d s: %d\n",(int)(newtime.tv_sec+(newtime.tv_usec/1.0e6)), elapsed, calc_log, store_log);*/
@@ -547,8 +556,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
           /*
            HASH the srcip, port, destip, port to create a unique filename
            concat with $pt_$ssrc.txt     
-          createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
-          printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
+           createHash((ip->ip_src).s_addr, srcport, (ip->ip_dst).s_addr, dstport);
+           printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
 
           payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
           rtp_flag = isRTP(payload, size_payload);
@@ -560,7 +569,6 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 #endif
         }
       }
-      printf("\n");
       break;
     /*
     case IPPROTO_ICMP:
@@ -581,19 +589,22 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   	update_vlog(sec, calc_log, ip->ip_p, isXIO, isLocal, size_ip_payload);
   
 #if FILE_STORE
-  FILE *fp;
-  fp = fopen (filestore_pkt, "a+");
-  if(fp==NULL){
-	perror("Unable to open filestore_pkt \n");
-	exit(1);
+  FILE *fp1;
+  fp1 = fopen (filestore_pkt, "a+");
+
+  if(fp1==NULL){
+    perror("Unable to open filestore_pkt \n");
+    exit(1);
   }
-  fprintf(fp, "%d:\t%d\tv%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n", 
+  
+  fprintf(fp1, "%d:\t%d\tv%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n", 
           pkt_count++, sec, ip_version, size_ip_payload,
           (isLocal==1)?"LOC":"EXT", 
           (isXIO==XIO_CROSS)?"XOS":(isXIO==XIO_INCOMING)?"INC":(isXIO==XIO_OUTGOING)?"OUT":"HOST",  
           (ip->ip_p==IPPROTO_TCP)?"TCP":(ip->ip_p==IPPROTO_UDP)?(rtp_flag==0)?"UDP":(rtp_flag==1)?"RTP":"RTCP":"OTH", 
           srcport, dstport, srcIPaddr, dstIPaddr);
-  fclose(fp);
+  
+  fclose(fp1);
 #endif
 }
 
@@ -633,20 +644,25 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
   //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
   filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+6);
   rtpstore_pkt = (char*) calloc(1, filelen_rtp);
+  
   sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, pt, ssrc);
-  printf ("filename: %s ", rtpstore_pkt);
+  //printf ("filename: %s\n", rtpstore_pkt);
+  
   FILE *fp_rtp;
   fp_rtp = fopen (rtpstore_pkt, "a+");  
+
   if(fp_rtp==NULL){
-	free(rtpstore_pkt);
-	perror("Unable to open rtpstore_pkt\n");
-	exit(1);
+    free(rtpstore_pkt);
+    perror("Unable to open rtpstore_pkt\n");
+    exit(1);
   }
+  
   fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%d\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
+  
   fclose(fp_rtp);
 #endif
   
-  if((ver==2) && ((ssrc > 0)||(ssrc < 0xffffffff)))
+  if((ver==2) && ((ssrc > 0x0)||(ssrc < 0xffffffff)))
   {
     /*
      What other heuristic should I use to validate that the packet is RTP/RTCP
@@ -725,7 +741,7 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port)
   printf("ack: %u\t", ntohl(tcp->th_ack));  
   printf("sum: %x\n", (ip->ip_sum));
   if (size_payload > 0) {
-    printf("\tPayload (%d bytes)", size_payload);
+    printf("Payload (%d bytes)\n", size_payload);
     print_payload(payload, size_payload);
   }      
   showPacketDetails(ip, tcp); 
@@ -955,6 +971,7 @@ int main(int argc, char **argv)
     /* Print the list of interfaces */
     for(device=alldevices; device; device=device->next) {
 #if BLOCK_LOOPBACK
+      //should we show LOOPBACK as an option or not.
       if(device->flags & PCAP_IF_LOOPBACK)
         break;
 #endif
@@ -1025,6 +1042,7 @@ int main(int argc, char **argv)
             dev, errbuf);
     net = 0;
     mask = 0;
+    exit(EXIT_FAILURE);
   }
   
   /* print capture info */
@@ -1049,6 +1067,7 @@ int main(int argc, char **argv)
   handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf); 
   if (handle == NULL) {
     fprintf(stderr, "Error: couldn't open device %s: %s\n", dev, errbuf);
+    cleanup();
     exit(EXIT_FAILURE);
   }
   
@@ -1059,14 +1078,15 @@ int main(int argc, char **argv)
   }
   
   /* PCAP: compile the filter expression */
-  if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+  if (pcap_compile(handle, &filter_prog, filter_exp, 0, net) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
+    cleanup();
     exit(EXIT_FAILURE);
   }
   
   /* PCAP: apply the compiled filter */
-  if (pcap_setfilter(handle, &fp) == -1) {
+  if (pcap_setfilter(handle, &filter_prog) == -1) {
     fprintf(stderr, "Error: couldn't install filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
@@ -1076,6 +1096,7 @@ int main(int argc, char **argv)
   rc = pthread_create(&threads, NULL, timer_event_initialize, NULL);
   if (rc){
     fprintf(stderr, "Error: in pthread_create(). Error No: %d\n", rc);
+    cleanup();
     exit(-1);
   }
   
@@ -1091,7 +1112,7 @@ int main(int argc, char **argv)
   printf("\nCapture complete.\n");
   
   /*kill thread*/
-  //pthread_exit(NULL);
+  pthread_exit(NULL);
   return 0;
 }
 
