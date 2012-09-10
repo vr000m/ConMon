@@ -64,7 +64,10 @@ void print_app_usage(void)
   printf("Options:\n");
   printf("    interface     Listen on <interface> for packets.\n");
   printf("    filter        PCAP Filter to apply on packets.\n");
-  printf("    -rtp          enable RTP detection [experimental], always add at the end\n");
+  printf("\n");
+  printf("    [only one experimental flag allowed at the end]\n");
+  printf("    --rtp         enable RTP detection\n");
+  printf("    --http        enable HTTP detection\n");
   printf("\n");
   
   return;
@@ -546,6 +549,11 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
        */
     case IPPROTO_TCP:
       size_payload =ParseTCPPacket((u_char *)ip, srcport, dstport);
+      if (((srcport==80||dstport==80)||(srcport==443||dstport==443)) && allow_http && (size_payload > 0))
+      {
+        payload = (u_char *)(packet + IPHDRSIZE + TCPHDRSIZE);
+        ParseHTTPPacket(payload, size_payload);        
+      }
       break;
     case IPPROTO_UDP:
       size_payload = ParseUDPPacket((u_char *)ip, srcport, dstport);
@@ -605,6 +613,14 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
           srcport, dstport, srcIPaddr, dstIPaddr);
   
   fclose(fp1);
+#endif
+}
+
+void ParseHTTPPacket(const u_char *packet, const u_int &size_payload)
+{
+#if _DEBUG 
+  printf("Payload (%d bytes)\n", size_payload);
+  print_payload(payload, size_payload);
 #endif
 }
 
@@ -917,22 +933,23 @@ int main(int argc, char **argv)
   
   print_app_banner();
   
-  /* HACK/BUG: always put -rtp at the end of the command not earlier */
+  /* HACK/BUG: always put --rtp/-http at the end of the command not earlier */
   for (i=0; i<argc; i++)
   {
-    j=strncmp(argv[i],"-rtp", strlen("-rtp"));
-    if (j==0){
+    if (strncmp(argv[i],"--rtp", strlen("--rtp"))==0){
       allow_rtp=1;
       args--;
     }
+    if (strncmp(argv[i],"--http", strlen("--http"))==0){
+      allow_http=1;
+      args--;
+    }
+    if (strncmp(argv[i],"-h", strlen("-h"))==0){
+      fprintf(stderr, "Error: unrecognized command-line options\n\n");
+      print_app_usage();
+      exit(EXIT_FAILURE);
+    }
   }
-
-//  if(allow_rtp){
-//    printf("found -rtp\n");
-//  }
-//  else {
-//    printf("-rtp not found\n");
-//  }
 
   /*reseting the values*/
   i=0, j=0;

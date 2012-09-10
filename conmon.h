@@ -289,6 +289,8 @@ u_int ParseTCPPacket(const u_char *packet, u_int &src_port, u_int &dst_port);
 
 u_int isRTP (const u_char *packet, const u_int &size_payload);
 
+void ParseHTTPPacket (const u_char *packet, const u_int &size_payload);
+
 u_long createHash(u_long ipSrc, u_int srcport, u_long ipDest, u_int dstport);
 
 void showPacketDetails(const struct sniff_ip *iph, const struct sniff_tcp *tcph);
@@ -353,5 +355,7 @@ char *filter_exp;
 
 u_int start_time;
 u_int allow_rtp;
+u_int allow_http;
+u_int http_capture_flag;
 
 #endif
