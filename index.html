@@ -33,127 +33,28 @@
 <hr><p>ConMon is a command line utility that measures the traffic to and from an
 endpoint. ConMon passively monitors the IP packets and classifies them to measure the bit rate for each of the classifiers. It is based on the <a href="http://www.tcpdump.org/sniffex.c">Sniffer example</a> in <code>libpcap (tcpdump)</code>.</p>
 
+<p>For more information read the <a href="https://github.com/vr000m/ConMon/blob/master/README.md">project README.md</a></p>
+
 <h3>Current classifiers:</h3>
 
 <ul>
-<li>Total, TCP, UDP, local, external [done] </li>
+<li>Total, TCP, UDP, local, external [done]</li>
 <li>Each is further classified as combined, inbound, outbound and background [done]</li>
+<li>Additionally: can detect RTP/UDP (if no hint is available on which port the 
+RTP is received then there are still some false-positives).</li>
 </ul><h4>Extras (yet to be implemented)</h4>
 
 <ul>
 <li>IPv4 and IPv6</li>
-<li>Multimedia Transport: RTP (for RTCWEB, MPRTP, RTSP, etc.)</li>
-<li>Multimedia Signaling: STUN, ICE packets</li>
+<li>STUN packets</li>
 <li>HTTP(S): port 80 and 443</li>
 <li>LEDBAT: e.g., Bittorrent</li>
-</ul><h3>Compiling ConMon</h3>
+</ul><h3>Example Results</h3>
 
-<p>The project comes with a basic Makefile and depends on the following libraries:</p>
+<p>A few sample results have been added to the 
+<a href="https://github.com/vr000m/ConMon/wiki/Example-Results">Wiki</a></p>
 
-<ul>
-<li><a href="http://www.tcpdump.org/release/libpcap-1.2.1.tar.gz">libpcap</a></li>
-<li><a href="https://github.com/downloads/libevent/libevent/libevent-2.0.19-stable.tar.gz">libevent</a></li>
-<li>[pthreads]</li>
-</ul><p>ConMon has two threads:
-1. Main Thread: captures packets based on <code>filter expression</code> and store packets to "Packet Logs".
-2. Event Thread: times out every <code>1s</code> and stores the {num_pkts, bytes} per classifier to the "Time Logs".</p>
-
-<h3>Running ConMon</h3>
-
-<p>ConMon requires root privileges to capture packets. Until <a href="https://github.com/vr000m/conmon/tree/v0.2.1">ConMon
-v0.2.1</a> the captured packets
-are stored locally (in files at <code>logs/</code>) and therefore the "user" has full
-control of their data. If we implement a backend service to capture the
-logs, we will then add a method to obfuscate the user's IP addresses to
-preserve their privacy. ConMon
-<a href="https://github.com/vr000m/conmon/tree/v0.2.1">currently</a> creates two files
-in <code>logs/</code></p>
-
-<ul>
-<li>Packet Logs: <code>pkt_list_$filter_$interface.txt</code> (e.g.: pkt_list_ip_en1.txt)</li>
-<li>Time Logs: <code>time_list_$filter_$interface.txt</code> (e.g.: time_list_ip_en1.txt)</li>
-</ul><h3>ConMon Usage</h3>
-
-<ul>
-<li>ConMon has two command line parameters: interface and filter.</li>
-</ul><pre><code>$./conmon --help
-Usage: conmon [interface] [filter]
-
-Options:
-    interface     Listen on &lt;interface&gt; for packets.
-    filter        PCAP Filter to apply on packets.
-</code></pre>
-
-<ul>
-<li>Running without any parameters sets default PCAP filter="ip" and shows a menu to choose interfaces.
-For example:</li>
-</ul><pre><code>$ sudo ./conmon
-extended by Varun Singh / Copyright (c) 2005 The Tcpdump Group
-THERE IS ABSOLUTELY NO WARRANTY FOR THIS PROGRAM.
-
-1. en0  (No Desc.)  
-2. fw0  (No Desc.)  
-3. en1  (No Desc.)  IPv6: fe80::xx:xx:xx:xx%en1 IPv4: xx.xx.xx.xx   
-4. p2p0 (No Desc.)  
-Enter the interface number (1-4):
-</code></pre>
-
-<ul>
-<li>If you do not want the choose the network interface every time then pass it as a command-line argument. You can use <code>ifconfig</code> to lookup the interfaces.</li>
-</ul><p>For example:</p>
-
-<pre><code>$ sudo ./conmon en1
-IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0   Device: en1 Filter expression: ip
-</code></pre>
-
-<ul>
-<li>You may use an alternate <a href="http://wiki.wireshark.org/CaptureFilters">PCAP filter</a>. 
-For example:</li>
-</ul><pre><code>$ sudo ./conmon en1 tcp
-IP ADDR: xx.xx.xx.xx  MASK: 255.255.240.0  Device: en1  Filter expression: tcp
-</code></pre>
-
-<h3>Output</h3>
-
-<p>In the <code>plots/</code> folder there is a script (<code>source plots.sh</code>) to generate
-the plots based on the "Time Logs" (e.g.: time_list_ip_en1.txt). We use
-<a href="http://gnuplot.sourceforge.net/demo_cvs/">Gnuplot</a> to generate the <a href="http://www.gnuplot.info/docs_4.6/gnuplot.pdf">PDF
-plots</a> (See Pg. 174 for list
-of <code>terminal</code> options).</p>
-
-<p><code>plots.sh</code> takes as command line argument the filename of the "time logs"
-(without the file extension). For example:</p>
-
-<pre><code>$./plots.sh time_list_ip_en1
-# will generate the following files
-time_list_ip_en1_total.pdf
-time_list_ip_en1_tcp.pdf
-time_list_ip_en1_udp.pdf
-time_list_ip_en1_local.pdf
-time_list_ip_en1_external.pdf
-</code></pre>
-
-<p>Each graph is a
-<code>multiplot</code>(<a href="http://gnuplot.sourceforge.net/demo_cvs/multiplt.html">http://gnuplot.sourceforge.net/demo_cvs/multiplt.html</a>) that
-shows the combined, incoming, outgoing and cross-traffic. An Example plot
-of the <strong>UDP traffic</strong> is shown below: 
-<img src="http://www.netlab.tkk.fi/%7Evarun/share_pub/time_list_udp-0.png" alt="Example ConMon plot"></p>
-
-<h3>TODO</h3>
-
-<ul>
-<li>create above classifiers [done]</li>
-<li>create vectors/map of {num_pkts, bytes} for each of the above classifiers [done]</li>
-<li>create plots to show changes in bit rate for the above classifiers [done]</li>
-<li>If data is uploaded then hash the source/destination IP addresses. [not
-needed currently, as data is stored locally!]</li>
-<li>create an API so that applications can query the bit rate for a specific
-classifier</li>
-<li>convert or allow ConMon to run as a daemon</li>
-<li>There may be bugs related to IPv6 in some places. ConMon is a fork from
-my earlier project <a href="https://github.com/vr000m/Snapper">Snapper</a>
-</li>
-</ul><h3>Contribute/Extend</h3>
+<h3>Contribute/Extend</h3>
 
 <p>If you want to parse a packet look at got_packet() there is a switch case
 that parses the protocol field. You can add your own code or function to
