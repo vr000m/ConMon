@@ -9,14 +9,26 @@ import socket
 #defines
 DNS_TIMEOUT = 5
 
+#global values
+dns_fail =0
+dns_pass =0
+dns_req = 0
+
 def reverseDNSlookup(addr):
+    global dns_fail
+    global dns_pass
+    global dns_req
+    
+    dns_req = dns_req + 1
     try:
         if hasattr(socket, 'setdefaulttimeout'):
             #timeout = 5s
             socket.setdefaulttimeout(DNS_TIMEOUT) 
         reverse_DNS=socket.gethostbyaddr(addr)
+        dns_pass=dns_pass+1
         return reverse_DNS[0]
     except socket.herror:
+        dns_fail=dns_fail+1
         #print "reverse DNS lookup failed for ",addr
         return "None"
 
@@ -49,6 +61,7 @@ def main(argv):
     #end of file
     rdnslog.close()
     logfile.close()
+    print dns_fail, dns_pass, dns_req
 
 if __name__ == "__main__":
     main(sys.argv[1:])
