@@ -47,3 +47,5 @@ node/
 rtp/*.txt
 
 plots/conmon-skitch.txt
+logs/*/*.txt
+
