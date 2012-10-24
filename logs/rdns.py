@@ -7,8 +7,7 @@ import csv
 import socket
 
 #defines
-IN_KBPS = 8.0/1000
-DNS_TIMEOUT = 1
+DNS_TIMEOUT = 5
 
 def reverseDNSlookup(addr):
     try:
