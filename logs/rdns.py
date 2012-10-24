@@ -36,8 +36,18 @@ def reverseDNSlookup(addr):
 def main(argv):
     if(len(argv)==0):
         sys.exit("insufficient arguments")
-    fn = argv[0]
-    logfile  = open(fn, "rb")
+    filename = argv[0]
+    
+    path=""
+    fn=""
+    index = filename.find('/')
+    if (index>0):
+        path=filename[0:index+1]
+        fn = filename[index+1:len(filename)]
+    else:
+        fn=filename
+    
+    logfile  = open(path+fn, "rb")
     rows = csv.reader(logfile, delimiter='\t')
     rdnslog = open('rdns_'+fn, 'w')
 
