@@ -2,7 +2,14 @@
   conmon.c
   
   Created by Varun Singh on https://github.com/vr000m/conmon
-  Copyright (c) 2012 Varun. All rights reserved.
+  This software is derived from sniffex.c.
+ * 1. Redistributions of source code must retain this copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name "ConMon" may not be used to endorse or promote
+ *    products derived from this software without prior written permission
  ****************************************************************************
  * sniffex.c
  *
