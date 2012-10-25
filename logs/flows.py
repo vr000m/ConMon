@@ -9,8 +9,9 @@ import operator
 #defines
 IN_KBPS = 8.0/1000
 DNS_TIMEOUT = 1
+IN_MB= (1024.0*1024)
 IN_KB= 1024.0
-SIZE_THRESHOLD=500.0 #kb
+SIZE_THRESHOLD=1.0 #mb
 
 def UpdateDict(key, dictionary, val):
     if(key in dictionary):
@@ -45,9 +46,12 @@ def writeFlowLog(fn, x):
         else:
             hostaddr=key
         
-        size=round(float(i[1][0])/IN_KB,2)
+        if(hostaddr=="None"):
+            hostaddr=ipaddr
+        
+        size=round(float(i[1][0])/IN_MB,2)
         if(size>SIZE_THRESHOLD):
-            log=str(hostaddr)+'\t'+str(ipaddr)+'\t'+str(i[1][1])+'\t'+str(size)+'\n'
+            log=str(hostaddr)+'\t'+str(i[1][1])+'\t'+str(size)+'\t'+str(ipaddr)+'\n'
             flowlog.write(log)
     flowlog.close()
 
@@ -114,7 +118,7 @@ def main(argv):
                 sz_in_pkt = sz_in_pkt + size
                 
                 #serverip_serverport_hostport
-                key = dns+"_"+col[9]+"_"+col[7]+"_"+col[8]
+                key = dns+"-"+col[9]+"-"+col[7]+"-"+col[8]
                 UpdateDictWithTuple(key, flow_tup_in, [size, 1])
                 UpdateDictWithTuple(col[9], addr_in, [size, 1])
                 
