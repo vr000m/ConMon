@@ -110,7 +110,7 @@ filename: rtp/rtp_1346675553_96_aaaabbbb.txt created
 
 [Once complete, to plot run]
 $ cd plots/
-$ ./plots.sh ./plots.sh "time_list_udp port 40500_eth0"
+$ ./plots.sh "time_list_udp port 40500_eth0"
 [for generating RTP specific plots do]
 $ cd rtp/
 $ ./rtp_bitrate.sh rtp_1346675553_97_ccccdddd
