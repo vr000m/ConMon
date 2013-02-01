@@ -43,3 +43,17 @@ $ source rtp_bitrate.sh rtp_1345972446_96_aaaabbbb
 >  payload=(int)96, ssrc=(guint)2863315899, clock-base=(guint)0,
 >  seqnum-base=(guint)0
 
+### Delay calculation
+
+If you run ConMon at the sender and the receiver, and the two locations are
+time synchronized then we can measure the one-way delay. Store the captured
+files from both computers in a folder. The subfolders should have names
+`machine1` and `machine2`. Each folders should have the ConMon captures from
+one of the machines. Typically, each machine folder contains a subfolder
+`rtp`.
+
+Run the following command, to calculate delay: (we use this to measure
+the delay between our demo WebRTC instances)
+``` $python conmon-diff-rtp.py 20130201/ ```
+
+
