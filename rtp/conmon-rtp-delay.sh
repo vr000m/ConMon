@@ -21,7 +21,7 @@ set tics nomirror
 # define grid
 set style line 12 lc rgb '#808080' lt 0 lw 1
 set grid back ls 12
-set yrange [0:2]
+#set yrange [0:2]
 
 # color definitions
 set style line 1 lc rgb '#8b1a0e' pt 1 ps 1 lt 1 lw 2 # --- red
