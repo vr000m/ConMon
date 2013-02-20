@@ -151,3 +151,19 @@ If you want to parse a packet look at got_packet() there is a switch case
 that parses the protocol field. You can add your own code or function to
 parse the associated packet (see `ParseUDPPacket()`/`ParseTCPPacket()` in
 `conmon.c`).
+
+### Cite (Reference)
+If you use ConMon in a research project (for passive measurements) then cite it as:
+```
+Singh V., "ConMon: App for Monitoring Connections", Helsinki, Finland 2013, http://vr000m.github.com/ConMon/
+```
+Bibtex:
+```
+@misc{singh:ConMon,
+  title={ConMon: App for Monitoring Connections},
+  author={Singh, V. },
+  howpublished={http://vr000m.github.com/ConMon/},
+  year={2013},
+}
+```
+
