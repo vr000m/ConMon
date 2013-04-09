@@ -627,71 +627,126 @@ void ParseHTTPPacket(const u_char *packet, const u_int &size_payload)
 u_int isRTP (const u_char *packet, const u_int &size_payload)
 {
   sniff_rtp_t *p;
-  u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver;
+  u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver, detector, rflag, mpt;
   u_int filelen_rtp=0;
   p = (sniff_rtp_t*) packet;
   char *rtpstore_pkt;
   
   // Extract header information
   alt_ver = (u_int)(p->vpxcc & 0xc0);
+  detector = (u_int)(p->vpxcc);
+  mpt = (u_int)(p->mpt);
   ver =RTP_V(p);
   marker = RTP_M(p);
   pt  =RTP_PT(p);
   seqno=(int)ntohs(p->seq);
   timestamp=ntohl(p->timestamp);
   ssrc=ntohl(p->ssrc);
-  
-#if _DEBUG 
-  printf ("%d\t", ver);
-  printf ("%d\t", RTP_P(p));
-  printf ("%d\t", RTP_X(p));
-  printf ("%d\t", RTP_CC(p));
-  printf ("%d\t", marker);
-  printf ("%d\t", pt);
-  printf ("%d\t", seqno);
-  /* 
-   BUG: something wierd is happening with the RTP timestamps
-   it seems to be jumping around? maybe an endian-ness problem?
-   */
-  printf ("%d\t", timestamp);
-  printf ("%x\n", ssrc);
-#endif
-#if FILE_STORE
-  //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
-  filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+6);
-  rtpstore_pkt = (char*) calloc(1, filelen_rtp);
-  
-  sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, pt, ssrc);
-  //printf ("filename: %s\n", rtpstore_pkt);
-  
-  FILE *fp_rtp;
-  fp_rtp = fopen (rtpstore_pkt, "a+");  
+  /*
+  From http://tools.ietf.org/html/rfc5764#section-5.1.2
+                 +----------------+
+                 | 127 < B < 192 -+--> forward to RTP
+                 |                |
+     packet -->  |  19 < B < 64  -+--> forward to DTLS
+                 |                |
+                 |       B < 2   -+--> forward to STUN
+                 +----------------+
 
-  if(fp_rtp==NULL){
-    free(rtpstore_pkt);
-    perror("Unable to open rtpstore_pkt\n");
-    exit(1);
-  }
-  
-  fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%d\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
-  
-  fclose(fp_rtp);
-#endif
-  
-  if((ver==2) && ((ssrc > 0x0)||(ssrc < 0xffffffff)))
+  Figure 3: The DTLS-SRTP receiver's packet demultiplexing algorithm.
+       Here the field B denotes the leading byte of the packet.
+  */
+
+  if (detector<2)
   {
-    /*
-     What other heuristic should I use to validate that the packet is RTP/RTCP
-     */
-  	if(pt < 200)
-      return 1; /* is RTP */
-    else if (pt<256)
-      return 2; /* is RTCP */
+    return 0; /* is STUN packet */
+  }
+  else if (detector<64 && detector > 19)
+  {
+    return 0; /* is DTLS packet*/
+  }
+  else if( detector<192 && detector > 127)
+  { 
+    if((ver==2) && ((ssrc > 0x0)||(ssrc < 0xffffffff)))
+    {
+      /*
+       Read: 
+       http://tools.ietf.org/html/rfc3550#appendix-A.1
+       http://tools.ietf.org/html/rfc3550#section-12
+
+       What other heuristic should I use to validate that the packet is RTP/RTCP
+       http://www.iana.org/assignments/rtp-parameters/rtp-parameters.xml
+       */
+      rflag = 0;
+      /* printf("pt %d (mpt=%d) and marker %d\n", pt, mpt, marker); */
+
+      if((pt <= 127) && (pt < 35 || pt > 95))
+      {
+        /*
+        there are some unassigned blocks 
+        should we cater for them?
+        Yes.
+        35-71 Unassigned
+        72-76 Reserved for RTCP conflict avoidance
+        77-95 Unassigned
+        */
+        rflag=1; /* is RTP */  
+
+        #if _DEBUG 
+          printf ("%d (%d)\t", ver, alt_ver);
+          printf ("%d\t", RTP_P(p));
+          printf ("%d\t", RTP_X(p));
+          printf ("%d\t", RTP_CC(p));
+          printf ("%d\t", marker);
+          printf ("%d\t", pt);
+          printf ("%d\t", seqno);
+          /* 
+           BUG: something wierd is happening with the RTP timestamps
+           it seems to be jumping around? maybe an endian-ness problem?
+           */
+          printf ("%d\t", timestamp);
+          printf ("%x\n", ssrc);
+        #endif
+
+        #if FILE_STORE
+          //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
+          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+6);
+          rtpstore_pkt = (char*) calloc(1, filelen_rtp);
+          
+          sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, pt, ssrc);
+          //printf ("filename: %s\n", rtpstore_pkt);
+          
+          FILE *fp_rtp;
+          fp_rtp = fopen (rtpstore_pkt, "a+");  
+
+          if(fp_rtp==NULL){
+            free(rtpstore_pkt);
+            perror("Unable to open rtpstore_pkt\n");
+            exit(1);
+          }
+          
+          fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%d\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
+          
+          fclose(fp_rtp);
+        #endif 
+
+      }
+      else if ((mpt>=192 && mpt<=255 ) || (pt>=72 && pt <=76))
+      {
+        /*
+        72-76 Reserved for RTCP conflict avoidance
+        >=192 see IANA URL
+        */
+        rflag=2; /* is RTCP */
+      }
+      else
+        return 0; /* not RTP/RTCP*/
+
+      return rflag;
+    }
     else
       return 0; /* not RTP/RTCP*/
   }
-  else
-    return 0; /* not RTP/RTCP*/
+  return 0; /* we don't know what this is */
 }
 
 u_int ParseUDPPacket (const u_char *packet, u_int &src_port, u_int &dst_port)
