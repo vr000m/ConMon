@@ -720,8 +720,8 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         #endif
 
         #if FILE_STORE
-          //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
-          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+6);
+          //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 8 special chars(_, /, '\0')
+          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+3+8);
           rtpstore_pkt = (char*) calloc(1, filelen_rtp);
           
           sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, pt, ssrc);
@@ -757,11 +757,11 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
           printf ("%d\t", rtcp_ssrc);
         #endif
         #if FILE_STORE
-          //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
-          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+6);
+          //start_time is 10, rtcp is 4, ssrc is 8(in hex, 10 in dec) and txt is 3 + 8 special chars(_, /, '\0')
+          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+4+8+3+8);
           rtpstore_pkt = (char*) calloc(1, filelen_rtp);
           
-          sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, ssrc);
+          sprintf(rtpstore_pkt, "%s/rtcp_%d_%d_%x.txt", RTP_DIR, start_time, ssrc);
           //printf ("filename: %s\n", rtpstore_pkt);
           
           FILE *fp_rtp;
