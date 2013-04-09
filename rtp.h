@@ -79,6 +79,6 @@ typedef struct
 
 #define RTCP_V(p)    (((p)->vprc) >> 6)
 #define RTCP_P(p)   ((((p)->vprc) & 0x2f) >> 5)
-#define RTCP_RC(p)   (((p)->vpxcc) & 0x1f)
+#define RTCP_RC(p)   (((p)->vprc) & 0x1f)
 
 #endif

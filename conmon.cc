@@ -703,7 +703,7 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         */
         rflag=1; /* is RTP */  
 
-        #if 1 
+        #if _DEBUG
           printf ("%d (%d)\t", rtp_ver, alt_ver);
           printf ("%d\t", RTP_P(pRtp));
           printf ("%d\t", RTP_X(pRtp));
@@ -748,15 +748,15 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         72-76 Reserved for RTCP conflict avoidance
         >=192 see IANA URL
         */
-        #if _DEBUG 
+        #if 1 
           printf ("%d\t", rtcp_ver);
-          printf ("%d\t", RTP_P(pRtcp));
-          printf ("%d\t", RTP_RC(pRtcp));
+          printf ("%d\t", RTCP_P(pRtcp));
+          printf ("%d\t", RTCP_RC(pRtcp));
           printf ("%d\t", rtcp_pt);
           printf ("%d\t", rtcp_len);
-          printf ("%d\t", rtcp_ssrc);
+          printf ("%d\n", rtcp_ssrc);
         #endif
-        #if FILE_STORE
+        #if 0
           //start_time is 10, rtcp is 4, ssrc is 8(in hex, 10 in dec) and txt is 3 + 8 special chars(_, /, '\0')
           filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+4+8+3+5);
           rtpstore_pkt = (char*) calloc(1, filelen_rtp);
