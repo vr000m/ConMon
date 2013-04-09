@@ -10,7 +10,8 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
 - [x] Total, TCP, UDP, local, external
 - [x] Each is further classified as combined, inbound, outbound and background
 - [x] Detect RTP/UDP (partial: if no hint is available on which port
-  the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
+  the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), 
+  [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
 - [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
 - [ ] IPv4 and IPv6
 - [?] HTTP(S): port 80 and 443
@@ -79,6 +80,10 @@ Enter the interface number (1-4):
 * If you do not want the choose the network interface every time then pass
   it as a command-line argument. You can use `ifconfig` to lookup the
   interface names.
+  
+* If you want to use the loopback interface then set BLOCK_LOOPBACK=0 in
+  `conmon.h`. Note: you'll have to `touch` or re-save the `conmon.cc` for
+  the re-compile to work.
 
 For example:
 
