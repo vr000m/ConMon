@@ -626,22 +626,34 @@ void ParseHTTPPacket(const u_char *packet, const u_int &size_payload)
 
 u_int isRTP (const u_char *packet, const u_int &size_payload)
 {
-  sniff_rtp_t *p;
-  u_int ver, marker, pt, seqno, timestamp, ssrc, alt_ver, detector, rflag, mpt;
+  sniff_rtp_t *pRtp;
+  sniff_rtcp_t *pRtcp;
+  u_int rtp_ver, marker, pt, seqno, timestamp, ssrc, alt_ver, mpt; 
+  u_int detector, rflag;
+  u_int rtcp_ver, rtcp_pt, rtcp_len, rtcp_ssrc;
+
   u_int filelen_rtp=0;
-  p = (sniff_rtp_t*) packet;
+  pRtp = (sniff_rtp_t*) packet;
+  pRtcp = (sniff_rtcp_t*) packet;
   char *rtpstore_pkt;
   
-  // Extract header information
-  alt_ver = (u_int)(p->vpxcc & 0xc0);
-  detector = (u_int)(p->vpxcc);
-  mpt = (u_int)(p->mpt);
-  ver =RTP_V(p);
-  marker = RTP_M(p);
-  pt  =RTP_PT(p);
-  seqno=(int)ntohs(p->seq);
-  timestamp=ntohl(p->timestamp);
-  ssrc=ntohl(p->ssrc);
+  /* Extract header information from RTP */
+  alt_ver = (u_int)(pRtp->vpxcc & 0xc0); /*shift right? or value will be 0x80*/
+  detector = (u_int)(pRtp->vpxcc);
+  mpt = (u_int)(pRtp->mpt);
+  rtp_ver =RTP_V(pRtp);
+  marker = RTP_M(pRtp);
+  pt  =RTP_PT(pRtp);
+  seqno=(int)ntohs(pRtp->seq);
+  timestamp=ntohl(pRtp->timestamp);
+  ssrc=ntohl(pRtp->ssrc);
+
+  /* Extract header information from RTCP */
+  rtcp_ver = RTCP_V(pRtcp);
+  rtcp_pt = (u_int)(pRtcp->pt);
+  rtcp_len = (u_int)(pRtcp->length);
+  rtcp_ssrc = (u_int)(pRtcp->ssrc);
+
   /*
   From http://tools.ietf.org/html/rfc5764#section-5.1.2
                  +----------------+
@@ -666,7 +678,7 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
   }
   else if( detector<192 && detector > 127)
   { 
-    if((ver==2) && ((ssrc > 0x0)||(ssrc < 0xffffffff)))
+    if((rtp_ver==2) && ((ssrc > 0x0)||(ssrc < 0xffffffff)))
     {
       /*
        Read: 
@@ -691,11 +703,11 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         */
         rflag=1; /* is RTP */  
 
-        #if _DEBUG 
-          printf ("%d (%d)\t", ver, alt_ver);
-          printf ("%d\t", RTP_P(p));
-          printf ("%d\t", RTP_X(p));
-          printf ("%d\t", RTP_CC(p));
+        #if 1 
+          printf ("%d (%d)\t", rtp_ver, alt_ver);
+          printf ("%d\t", RTP_P(pRtp));
+          printf ("%d\t", RTP_X(pRtp));
+          printf ("%d\t", RTP_CC(pRtp));
           printf ("%d\t", marker);
           printf ("%d\t", pt);
           printf ("%d\t", seqno);
@@ -730,12 +742,41 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         #endif 
 
       }
-      else if ((mpt>=192 && mpt<=255 ) || (pt>=72 && pt <=76))
+      else if ((rtcp_pt >= 192 && rtcp_pt <= 255 ) || (pt>=72 && pt <=76))
       {
         /*
         72-76 Reserved for RTCP conflict avoidance
         >=192 see IANA URL
         */
+        #if _DEBUG 
+          printf ("%d\t", rtcp_ver);
+          printf ("%d\t", RTP_P(pRtcp));
+          printf ("%d\t", RTP_RC(pRtcp));
+          printf ("%d\t", rtcp_pt);
+          printf ("%d\t", rtcp_len);
+          printf ("%d\t", rtcp_ssrc);
+        #endif
+        #if FILE_STORE
+          //start_time is 10, rtp is 3, pt is 3, ssrc is 8(in hex, 10 in dec) and txt is 3 + 6 special chars(_, /, '\0')
+          filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+3+3+8+6);
+          rtpstore_pkt = (char*) calloc(1, filelen_rtp);
+          
+          sprintf(rtpstore_pkt, "%s/rtp_%d_%d_%x.txt", RTP_DIR, start_time, ssrc);
+          //printf ("filename: %s\n", rtpstore_pkt);
+          
+          FILE *fp_rtp;
+          fp_rtp = fopen (rtpstore_pkt, "a+");  
+
+          if(fp_rtp==NULL){
+            free(rtpstore_pkt);
+            perror("Unable to open rtpstore_pkt\n");
+            exit(1);
+          }
+          
+          fprintf(fp_rtp,"%f\t%x\t%d\t%d\t%d\n", gettime(), rtcp_ssrc, rtcp_pt, rtcp_len, size_payload);
+          
+          fclose(fp_rtp);
+        #endif 
         rflag=2; /* is RTCP */
       }
       else
