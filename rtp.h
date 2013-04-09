@@ -69,7 +69,8 @@ typedef enum {
 
 typedef struct
 {
-  u_short vprpt;     
+  u_char vprc;
+  u_char pt;    
   u_short length;        
 } sniff_rtcp_t;
 
