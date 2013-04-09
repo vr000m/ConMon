@@ -644,15 +644,15 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
   rtp_ver =RTP_V(pRtp);
   marker = RTP_M(pRtp);
   pt  =RTP_PT(pRtp);
-  seqno=(int)ntohs(pRtp->seq);
+  seqno=(u_int)ntohs(pRtp->seq);
   timestamp=ntohl(pRtp->timestamp);
   ssrc=ntohl(pRtp->ssrc);
 
   /* Extract header information from RTCP */
   rtcp_ver = RTCP_V(pRtcp);
   rtcp_pt = (u_int)(pRtcp->pt);
-  rtcp_len = (u_int)(pRtcp->length);
-  rtcp_ssrc = (u_int)(pRtcp->ssrc);
+  rtcp_len = (u_int)ntohs(pRtcp->length);
+  rtcp_ssrc = ntohl(pRtcp->ssrc);
 
   /*
   From http://tools.ietf.org/html/rfc5764#section-5.1.2
@@ -748,7 +748,7 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
         72-76 Reserved for RTCP conflict avoidance
         >=192 see IANA URL
         */
-        #if 1 
+        #if _DEBUG
           printf ("%d\t", rtcp_ver);
           printf ("%d\t", RTCP_P(pRtcp));
           printf ("%d\t", RTCP_RC(pRtcp));
@@ -756,7 +756,7 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
           printf ("%d\t", rtcp_len);
           printf ("%d\n", rtcp_ssrc);
         #endif
-        #if 0
+        #if FILE_STORE
           //start_time is 10, rtcp is 4, ssrc is 8(in hex, 10 in dec) and txt is 3 + 8 special chars(_, /, '\0')
           filelen_rtp=sizeof(RTP_DIR)+sizeof(char)*(10+4+8+3+5);
           rtpstore_pkt = (char*) calloc(1, filelen_rtp);
