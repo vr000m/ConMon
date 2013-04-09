@@ -57,6 +57,8 @@ typedef struct
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  |V=2|P|    RC   |     PT=20x    |             length            |
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                         SSRC of sender                        | 
+ +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+ 
 */
 
 typedef enum {
@@ -71,7 +73,12 @@ typedef struct
 {
   u_char vprc;
   u_char pt;    
-  u_short length;        
+  u_short length;
+  u_int ssrc;    
 } sniff_rtcp_t;
+
+#define RTCP_V(p)    (((p)->vprc) >> 6)
+#define RTCP_P(p)   ((((p)->vprc) & 0x2f) >> 5)
+#define RTCP_RC(p)   (((p)->vpxcc) & 0x1f)
 
 #endif
