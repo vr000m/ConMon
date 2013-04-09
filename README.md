@@ -4,7 +4,7 @@ endpoint. ConMon passively monitors the IP packets and classifies them to
 measure the bit rate for each of the classifiers. 
 
 It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
-`libpcap (tcpdump)`.
+`libpcap (tcpdump)` and my earlier project [Snapper](https://github.com/vr000m/Snapper)
 
 ### Current classifiers:
 - [x] Total, TCP, UDP, local, external
@@ -13,7 +13,7 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
   the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
 - [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
 - [ ] IPv4 and IPv6
-- [ ] HTTP(S): port 80 and 443
+- [?] HTTP(S): port 80 and 443
 - [ ] LEDBAT: e.g., Bittorrent
 
 ### Compiling ConMon
@@ -128,19 +128,17 @@ For instructions on plotting read
 Read more about sample results in the [Wiki](https://github.com/vr000m/ConMon/wiki/Example-Results)
 
 ### ConMon TODO
-* create above classifiers [done]
-* create vectors/map of {num_pkts, bytes} for each of the above classifiers
-  [done]
-* create plots to show changes in bit rate for the above classifiers [done]
-* If data is uploaded then hash the source/destination IP addresses. [not
-  needed currently, as data is stored locally!]
-* Test RTP, RTCP, RTCP-mux, A/V-mux, etc.
-* Use some heuristics to reduce false-positives in RTP detection.
-* use [DBUS](http://www.freedesktop.org/wiki/Software/dbus) so that
+- [x] create above classifiers
+- [x] create vectors/map of {num_pkts, bytes} for each of the above classifiers
+- [x] create plots to show changes in bit rate for the above classifiers
+- [ ] If data is uploaded then hash the source/destination IP addresses. (not
+  needed currently, as data is stored locally!)
+- [x] Test RTP, RTCP, RTCP-mux, A/V-mux, etc.
+- [x] Use some heuristics to reduce false-positives in RTP detection.
+- [ ] use [DBUS](http://www.freedesktop.org/wiki/Software/dbus) so that
   applications can query the bit rate for a specific classifier
-* convert or allow ConMon to run as a daemon
-* There may be bugs related to IPv6 in some places. ConMon is a fork from
-  my earlier project [Snapper](https://github.com/vr000m/Snapper)
+- [ ] convert or allow ConMon to run as a daemon
+- [ ] There may be bugs related to IPv6 in some places. 
 
 
 ### Contribute/Extend
