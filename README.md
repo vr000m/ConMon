@@ -11,11 +11,12 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
 * Each is further classified as combined, inbound, outbound and background
   [done]
 * Additionally: can detect RTP/UDP (if no hint is available on which port
-  the RTP is received then there are still some false-positives).
+  the RTP is received then there are still some false-positives) [see 
+  commit [4edc460425e6fa08bc747cc3e83db792052c4d1e] for new updates].
+* STUN packets
 
 #### Extras (yet to be implemented)
 * IPv4 and IPv6
-* STUN packets
 * HTTP(S): port 80 and 443
 * LEDBAT: e.g., Bittorrent
 
@@ -155,12 +156,12 @@ parse the associated packet (see `ParseUDPPacket()`/`ParseTCPPacket()` in
 ### Cite (Reference)
 If you use ConMon in a research project (for passive measurements) then cite it as:
 ```
-Singh V., "ConMon: App for Monitoring Connections", Helsinki, Finland 2013, http://vr000m.github.com/ConMon/
+Singh V., "ConMon: An Application for Monitoring Connections", Helsinki, Finland 2013, http://vr000m.github.com/ConMon/
 ```
 Bibtex:
 ```
 @misc{singh:ConMon,
-  title={ConMon: App for Monitoring Connections},
+  title={ConMon: An Application for Monitoring Connections},
   author={Singh, V. },
   howpublished={http://vr000m.github.com/ConMon/},
   year={2013},
