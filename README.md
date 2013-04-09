@@ -7,18 +7,14 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
 `libpcap (tcpdump)`.
 
 ### Current classifiers:
-* Total, TCP, UDP, local, external [done]
-* Each is further classified as combined, inbound, outbound and background
-  [done]
-* Additionally: can detect RTP/UDP (if no hint is available on which port
-  the RTP is received then there are still some false-positives) [see 
-  commit [4edc460425e6fa08bc747cc3e83db792052c4d1e] for new updates].
-* STUN packets
-
-#### Extras (yet to be implemented)
-* IPv4 and IPv6
-* HTTP(S): port 80 and 443
-* LEDBAT: e.g., Bittorrent
+- [x] Total, TCP, UDP, local, external
+- [x] Each is further classified as combined, inbound, outbound and background
+- [x] Detect RTP/UDP (partial: if no hint is available on which port
+  the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
+- [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
+- [ ] IPv4 and IPv6
+- [ ] HTTP(S): port 80 and 443
+- [ ] LEDBAT: e.g., Bittorrent
 
 ### Compiling ConMon
 The project comes with a basic Makefile (`Makefile.backup` or `Makefile.ubuntu`) 
