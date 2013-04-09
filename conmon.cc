@@ -504,6 +504,9 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   u_int size_payload=0, size_ip_payload=0;
   u_int sec;
   
+  u_short TURN_ChannelData, TURN_Length;
+  turn_ch_data_t* pTurn;
+
   /* define ethernet header */
   ethernet = (struct sniff_ethernet*)(packet);
   
@@ -568,7 +571,50 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
            printf("%s\t%d\t%s\t%d\t%d", srcIPaddr, srcport, dstIPaddr, dstport, size_ip_payload);*/
 
           payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE);
-          rtp_flag = isRTP(payload, size_payload);
+
+          /*
+            HACK: size_payload, we log the actual packet size instead of UDP payload
+          */
+
+          if (allow_turn) {
+            /*
+            In this case we should just send the ChannelData message
+            http://tools.ietf.org/html/rfc5766#section-11.4
+            Also 11.6.  Receiving a ChannelData Message
+            */
+            pTurn = (turn_ch_data_t*)(payload);
+            TURN_ChannelData = (u_short) pTurn->ch_num;
+            TURN_Length = (u_short) pTurn->length;
+            /*
+            0x4000 through 0x7FFF: These values are the allowed channel
+                  numbers (16,383 possible values).
+            
+            Also ChannelData messages can be distinguished from STUN-formatted 
+            messages by examining the first two bits of the message.
+            0b00: STUN-formatted message
+            0b01: ChannelData message
+            See http://tools.ietf.org/html/rfc5766#section-11 for details.
+            
+            The ChannelData message is not a STUN message, and thus has no transaction id.  
+            Instead, it has only three fields: a channel number, data, and data length; 
+            here the channel number field is 0x4000
+            See http://tools.ietf.org/html/rfc5766#section-16
+            */
+            if(TURN_ChannelData == 0x4000) {
+              payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE + sizeof(turn_ch_data_t));
+              rtp_flag = isRTP(payload, size_ip_payload);
+            }
+            else {
+
+              /*
+                discard packet: 
+                There are more rules at http://tools.ietf.org/html/rfc5766#section-11.6
+              */
+            }
+          }
+          else {
+            rtp_flag = isRTP(payload, size_ip_payload);
+          }
 #if _DEBUG
           if (size_payload > 0 && rtp_flag) {
             printf("Payload (%d bytes)\n", size_payload);
@@ -1019,6 +1065,7 @@ int main(int argc, char **argv)
   store_log = -1;
   using_loopback=0;
   allow_rtp=0;
+  allow_turn=0;
   
   start_time=(u_int)gettime();
   
@@ -1035,6 +1082,11 @@ int main(int argc, char **argv)
   {
     if (strncmp(argv[i],"--rtp", strlen("--rtp"))==0){
       allow_rtp=1;
+      args--;
+    }
+    if (strncmp(argv[i],"--turn", strlen("--turn"))==0){
+      allow_turn=1;
+      allow_rtp =1;
       args--;
     }
     if (strncmp(argv[i],"--http", strlen("--http"))==0){

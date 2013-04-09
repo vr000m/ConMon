@@ -356,6 +356,7 @@ char *filter_exp;
 u_int start_time;
 u_int allow_rtp;
 u_int allow_http;
+u_int allow_turn;
 u_int http_capture_flag;
 
 #endif

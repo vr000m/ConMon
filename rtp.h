@@ -81,4 +81,33 @@ typedef struct
 #define RTCP_P(p)   ((((p)->vprc) & 0x2f) >> 5)
 #define RTCP_RC(p)   (((p)->vprc) & 0x1f)
 
+/*
+TURN RELAY:
+
+11.4.  The ChannelData Message
+
+   The ChannelData message is used to carry application data between the
+   client and the server.  It has the following format:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Channel Number        |            Length             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   /                       Application Data                        /
+   /                                                               /
+   |                                                               |
+   |                               +-------------------------------+
+   |                               |
+   +-------------------------------+
+*/
+
+typedef struct
+{
+ u_short ch_num;
+ u_short length;
+} turn_ch_data_t;
+
+
 #endif
