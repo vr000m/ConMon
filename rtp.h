@@ -16,7 +16,7 @@
 #define MAXRTPPAYLOADLEN  (65536 - IPHDRSIZE - UDPHDRSIZE - RTP_HDR_SZ)
 #define SSRC  0x12345678               
 #define RTP_TR_TIMESTAMP_MULT 1000   
-
+#define TURNHDRSIZE sizeof(turn_ch_data_t)
 
 /*
  https://tools.ietf.org/html/rfc3550#section-5.1

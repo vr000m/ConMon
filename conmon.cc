@@ -68,6 +68,7 @@ void print_app_usage(void)
   printf("    [only one experimental flag allowed at the end]\n");
   printf("    --rtp         enable RTP detection\n");
   printf("    --http        enable HTTP detection\n");
+  printf("    --turn        extract RTP from TURN relays (includes --rtp)\n");
   printf("\n");
   
   return;
@@ -601,7 +602,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             See http://tools.ietf.org/html/rfc5766#section-16
             */
             if(TURN_ChannelData == 0x4000) {
-              payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE + sizeof(turn_ch_data_t));
+              payload = (u_char *)(packet+ ETHHDRSIZE + IPHDRSIZE + UDPHDRSIZE + TURNHDRSIZE);
               rtp_flag = isRTP(payload, size_ip_payload);
             }
             else {
