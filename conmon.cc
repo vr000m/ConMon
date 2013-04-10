@@ -583,8 +583,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             Also 11.6.  Receiving a ChannelData Message
             */
             pTurn = (turn_ch_data_t*)(payload);
-            TURN_ChannelData = (u_short) pTurn->ch_num;
-            TURN_Length = (u_short) pTurn->length;
+            TURN_ChannelData = htons((u_short) pTurn->ch_num);
+            TURN_Length = htons((u_short) pTurn->length);
             /*
             0x4000 through 0x7FFF: These values are the allowed channel
                   numbers (16,383 possible values).
@@ -605,7 +605,6 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
               rtp_flag = isRTP(payload, size_ip_payload);
             }
             else {
-
               /*
                 discard packet: 
                 There are more rules at http://tools.ietf.org/html/rfc5766#section-11.6
@@ -782,7 +781,7 @@ u_int isRTP (const u_char *packet, const u_int &size_payload)
             exit(1);
           }
           
-          fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%d\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
+          fprintf(fp_rtp,"%f\t%d\t%x\t%d\t%x\t%d\t%d\n", gettime(), pt, ssrc, seqno, timestamp, marker, size_payload);
           
           fclose(fp_rtp);
         #endif 
