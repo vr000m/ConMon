@@ -13,6 +13,7 @@ It is based on the [Sniffer example](http://www.tcpdump.org/sniffex.c) in
   the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), 
   [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
 - [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
+- [x] TURN relayed packets (See [v0.3.3](https://github.com/vr000m/conmon/tree/v0.3.3))
 - [ ] IPv4 and IPv6
 - [?] HTTP(S): port 80 and 443
 - [ ] LEDBAT: e.g., Bittorrent
@@ -61,6 +62,7 @@ Options:
     [only one experimental flag allowed at the end]
     --rtp         enable RTP detection
     --http        enable HTTP detection
+    --turn        extract RTP from TURN relays (includes --rtp)
 ```
 
 
@@ -122,8 +124,14 @@ $ ./rtp_bitrate.sh rtp_1346675553_96_aaaabbbb
 More RTP related instructions are available at
 [rtp/README.md](https://github.com/vr000m/ConMon/blob/master/rtp/README.md)
 
-**NOTE**: as of version [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2) 
+**NOTE1**: as of version [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2) 
 -rtp is replaced by --rtp
+
+**NOTE2**: as of version [v0.3.3](https://github.com/vr000m/conmon/tree/v0.3.3), 
+ConMon can extract RTP from TURN-relayed packets (detects `ChannelData=0x4000`).
+But this can only be done explicitly by providing the `--turn` option on the CLI.
+Auto-detection is an open issue ([issue #3](https://github.com/vr000m/ConMon/issues/3)).
+The rest of the workflow remains the same as `--rtp`. 
 
 ### Output
 For instructions on plotting read
