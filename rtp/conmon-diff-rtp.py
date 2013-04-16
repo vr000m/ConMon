@@ -2,6 +2,7 @@
 import sys
 import os
 import csv
+import getopt
 
 from os import listdir
 from os.path import isfile, join
@@ -32,6 +33,8 @@ def main(argv):
     path =argv[0]
     base_path1 = path+add_path1
     base_path2 = path+add_path2
+    #base_path1 = argv[0]
+    #base_path2 = argv[1]
     # find text files in the two two directories
     # make sure the two machines have synchronized clocks, 
     # else we cannot really make sense of the delay values
@@ -60,7 +63,7 @@ def main(argv):
             x = m1 if (len(m1) > len(m2)) else m2
             y = m2 if (len(m1) > len(m2)) else m1
 
-            fname=path+"delay_"+ptssrc
+            fname="delay_"+ptssrc
 
             delayLog = open(fname, 'wb')
             logWriter = csv.writer(delayLog, delimiter='\t')
@@ -74,7 +77,7 @@ def main(argv):
                         d = y[key] - value
                         logWriter.writerow([value, key, d])
                 #print d
-            os.system("./conmon-rtp-delay.sh "+fname.split (".")[0])
+            #os.system("./conmon-rtp-delay.sh "+fname.split (".")[0])
             delayLog.close
     
         
