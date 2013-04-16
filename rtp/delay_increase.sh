@@ -19,7 +19,7 @@ set grid
 set style fill pattern 5
 set xtics border out scale 0,0 mirror offset character 0, 0, 0
 
-plot "tmp.txt" with linespoints lw 3 lt -1 pt 6 ps 1.5 lc -1
+plot "delay_inc.txt" using 1:2 with linespoints lw 3 lt -1 pt 6 ps 1.5 lc -1
 EOF
 rm delay_inc.txt
-rm tmp.txt
+#rm tmp.txt
