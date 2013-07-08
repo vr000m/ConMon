@@ -12,7 +12,7 @@ BEGIN	{
 			printf ("%5.3f\t%5.3f\t%d\n", time, bytes/125, count);
 			time = int($1);
 			bytes = $7;
-			count = 2;
+			count = 1;
 			n++;
 		} else {
 			time = int($1);
