@@ -5,7 +5,7 @@
            |                |   | DTLS processing  |
            |                |   |                  |
 packet --> |  19 < B < 64  -+-->+ appl. protocol  -+--> SCTP
-           |                |   |                     |
+           |                |   |                  |
            |                |   | other protocols -+--> DTLS
            |                |   |                  |
            |                |   +------------------+
