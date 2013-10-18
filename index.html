@@ -37,22 +37,28 @@ endpoint. ConMon passively monitors the IP packets and classifies them to measur
 
 <h3>Current classifiers:</h3>
 
-<ul>
-<li>Total, TCP, UDP, local, external [done]</li>
-<li>Each is further classified as combined, inbound, outbound and background [done]</li>
-<li>Additionally: can detect RTP/UDP (if no hint is available on which port the 
-RTP is received then there are still some false-positives).</li>
-</ul><h4>Extras (yet to be implemented)</h4>
-
-<ul>
-<li>IPv4 and IPv6</li>
-<li>STUN packets</li>
-<li>HTTP(S): port 80 and 443</li>
-<li>LEDBAT: e.g., Bittorrent</li>
-</ul><h3>Example Results</h3>
+<pre>
+- [x] Total, TCP, UDP, local, external
+- [x] Each is further classified as combined, inbound, outbound and background
+- [x] Detect RTP/UDP (partial: if no hint is available on which port
+  the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), 
+  [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
+- [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
+- [x] TURN relayed packets (See [v0.3.3](https://github.com/vr000m/conmon/tree/v0.3.3))
+- [ ] IPv4 and IPv6
+- [?] HTTP(S): port 80 and 443
+- [ ] LEDBAT: e.g., Bittorrent
+- [x] WebRTC (see above: we already do, RTP, STUN, TURN, DTLS and in the case WebRTC flows all these packets are multiplexed on the same 5-tuple)
+</pre>
 
 <p>A few sample results have been added to the 
-<a href="https://github.com/vr000m/ConMon/wiki/Example-Results">Wiki</a></p>
+<a href="https://github.com/vr000m/ConMon/wiki/Example-Results">Wiki</a> (Bitorrent, Skype, Hangouts), 
+the Netflix, Spotify plots are available <a href="http://www.netlab.tkk.fi/~varun/cc.html">here</a>.
+Research paper using ConMon for monitoring performance of WebRTC congestion control is accessible 
+<a href="http://www.netlab.tkk.fi/~varun/singh2013rrtcc.pdf">here</a>.
+  
+</p>
+
 
 <h3>Contribute/Extend</h3>
 
