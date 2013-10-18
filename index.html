@@ -41,15 +41,22 @@ endpoint. ConMon passively monitors the IP packets and classifies them to measur
 - [x] Total, TCP, UDP, local, external
 - [x] Each is further classified as combined, inbound, outbound and background
 - [x] Detect RTP/UDP (partial: if no hint is available on which port
-  the RTP is received then there are still some false-positives. See [v0.3.2](https://github.com/vr000m/conmon/tree/v0.3.2), 
-  [rtp-detection](https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e) for details).
+  the RTP is received then there are still some false-positives. (See [v0.3.2])
 - [x] STUN packets (partly: we can distinguish between STUN, DTLS, RTP/RTCP)
-- [x] TURN relayed packets (See [v0.3.3](https://github.com/vr000m/conmon/tree/v0.3.3))
+- [x] TURN relayed packets (See [v0.3.3]).
 - [ ] IPv4 and IPv6
 - [?] HTTP(S): port 80 and 443
 - [ ] LEDBAT: e.g., Bittorrent
 - [x] WebRTC (see above: we already do, RTP, STUN, TURN, DTLS and in the case WebRTC flows all these packets are multiplexed on the same 5-tuple)
 </pre>
+
+<p>For possible fixes to detecting false positive RTP packets, See 
+<a href="https://github.com/vr000m/conmon/tree/v0.3.2">[v0.3.2]</a> and 
+<a href="https://github.com/vr000m/ConMon/commit/4edc460425e6fa08bc747cc3e83db792052c4d1e">[rtp-detection]</a>
+for details.</p>
+
+<p>For parsing RTP packets on the TURN relay, see 
+<a href="https://github.com/vr000m/conmon/tree/v0.3.3">[v0.3.3]</a>.</p>
 
 <p>A few sample results have been added to the 
 <a href="https://github.com/vr000m/ConMon/wiki/Example-Results">Wiki</a> (Bitorrent, Skype, Hangouts), 
