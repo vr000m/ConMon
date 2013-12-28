@@ -10,5 +10,5 @@ packet --> |  19 < B < 64  -+-->+ appl. protocol  -+--> SCTP
            |                |   |                  |
            |                |   +------------------+
            |                |
-           |       B < 2   -+--> forward to STUN/ICE
+           |       B < 2   -+--> forward to STUN/ICE ---> if TURN, parse recursively.
            +----------------+
